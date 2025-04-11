@@ -4,6 +4,7 @@ import { Appbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import { insertBankAccountData } from '../store/database'; // Database function
+import BottomTabNavigator from '../components/BottomTabNavigator';
 
 const BankAccountScreen = ({ navigation }) => {
   const [ifscCode, setIfscCode] = useState('');
@@ -62,15 +63,10 @@ const BankAccountScreen = ({ navigation }) => {
 
   return (
     <>
-      <Appbar.Header style={styles.appBar}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Bank Account" />
-      </Appbar.Header>
-
       <View style={styles.container}>
         <View style={styles.innerContainer}>
 
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
             <Text style={styles.headerText}>Bank Account Form</Text>
 
             {/* IFSC Code Input */}
@@ -150,6 +146,7 @@ const BankAccountScreen = ({ navigation }) => {
           </ScrollView>
         </View>
       </View>
+      {/* <BottomTabNavigator /> */}
     </>
   );
 };
@@ -157,8 +154,9 @@ const BankAccountScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 10,
     backgroundColor: '#f5f5f5',
+    paddingTop: 2,
   },
   scrollContainer: {
     flexGrow: 1,

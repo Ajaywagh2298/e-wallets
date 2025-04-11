@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Share } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { insertOtherData, getAllOtherData } from '../store/database'; // Database function
 import { MaterialIcons, Feather } from '@expo/vector-icons'; // For icons
 import { LinearGradient } from 'expo-linear-gradient'; // For gradients
+import BottomTabNavigator from '../components/BottomTabNavigator'; // Bottom Tab Navigator
 
 const OtherScreen = ({ navigation }) => {
   const [documentType, setDocumentType] = useState('SELECT');
@@ -97,85 +98,104 @@ const OtherScreen = ({ navigation }) => {
       .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
   };
 
+  const handleShare = async (entry) => {
+    const shareMessage = Object.entries(entry)
+      .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`)
+      .join('\n');
+
+    try {
+      await Share.share({
+        message: `Here are my document details:\n\n${shareMessage}`,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Unable to share details');
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollView}>
-        {Object.keys(otherData).length === 0 ? (
-          <Text style={styles.emptyText}>No data available</Text>
-        ) : (
-          Object.entries(otherData).map(([type, entries]) => (
-            <View key={type} style={styles.card}>
-              {/* Document Type Header with Icon */}
-              <View style={styles.cardHeader}>
-                <Feather name="file-text" size={22} color="#fff" />
-                <Text style={styles.cardTitle}>{formatLabel(type)}</Text>
-              </View>
-
-              {/* Document Entries */}
-              {entries.map((entry, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.entry,
-                  ]}
-                >
-                  {Object.entries(entry).map(([key, value]) => (
-                    <View key={key} style={styles.entryRow}>
-                      <Text style={styles.entryLabel}>{formatLabel(key)}:</Text>
-                      <Text style={styles.entryValue}>{value}</Text>
-                    </View>
-                  ))}
+    <>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollView}>
+          {Object.keys(otherData).length === 0 ? (
+            <Text style={styles.emptyText}>No data available</Text>
+          ) : (
+            Object.entries(otherData).map(([type, entries]) => (
+              <View key={type} style={styles.card}>
+                {/* Document Type Header with Icon */}
+                <View style={styles.cardHeader}>
+                  <Feather name="file-text" size={22} color="#fff" />
+                  <Text style={styles.cardTitle}>{formatLabel(type)}</Text>
+                  <TouchableOpacity onPress={() => handleShare(entry)}>
+                    <Feather name="share-2" size={20} color="#34495e" />
+                  </TouchableOpacity>
                 </View>
-              ))}
-            </View>
-          ))
-        )}
-      </ScrollView>
 
-
-      {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} onPress={() => setIsFormVisible(true)}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-
-      {/* Modal Popup for Adding Data */}
-      <Modal visible={isFormVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-              <Text style={styles.headerText}>Document Details</Text>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Document Type</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker selectedValue={documentType} onValueChange={(value) => { setDocumentType(value); setFormData({}); }} style={styles.picker}>
-                    {Object.keys(formFields).map((key) => (
-                      <Picker.Item key={key} label={key.replace('_', " ")} value={key} />
+                {/* Document Entries */}
+                {entries.map((entry, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.entry,
+                    ]}
+                  >
+                    {Object.entries(entry).map(([key, value]) => (
+                      <View key={key} style={styles.entryRow}>
+                        <Text style={styles.entryLabel}>{formatLabel(key)}:</Text>
+                        <Text style={styles.entryValue}>{value}</Text>
+                      </View>
                     ))}
-                  </Picker>
-                </View>
+                  </View>
+                ))}
               </View>
+            ))
+          )}
+        </ScrollView>
 
-              {formFields[documentType].map(({ key, label }) => (
-                <View key={key} style={styles.inputContainer}>
-                  <Text style={styles.label}>{label}</Text>
-                  <TextInput style={styles.input} placeholder={`Enter ${label}`} value={formData[key] || ''} onChangeText={(text) => handleInputChange(key, text)} />
+        {/* Floating Action Button */}
+        <TouchableOpacity style={styles.fab} onPress={() => setIsFormVisible(true)}>
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+
+        {/* Modal Popup for Adding Data */}
+        <Modal visible={isFormVisible} animationType="slide" transparent={true}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <ScrollView contentContainerStyle={styles.scrollContainer}>
+                <Text style={styles.headerText}>Document Details</Text>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Document Type</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker selectedValue={documentType} onValueChange={(value) => { setDocumentType(value); setFormData({}); }} style={styles.picker}>
+                      {Object.keys(formFields).map((key) => (
+                        <Picker.Item key={key} label={key.replace('_', " ")} value={key} />
+                      ))}
+                    </Picker>
+                  </View>
                 </View>
-              ))}
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.closeButton} onPress={() => setIsFormVisible(false)}>
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+                {formFields[documentType].map(({ key, label }) => (
+                  <View key={key} style={styles.inputContainer}>
+                    <Text style={styles.label}>{label}</Text>
+                    <TextInput style={styles.input} placeholder={`Enter ${label}`} value={formData[key] || ''} onChangeText={(text) => handleInputChange(key, text)} />
+                  </View>
+                ))}
+
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.closeButton} onPress={() => setIsFormVisible(false)}>
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+      <BottomTabNavigator menu={'Other'} />
+    </>
   );
 };
 
@@ -189,7 +209,7 @@ const styles = StyleSheet.create({
   entryText: { fontSize: 16, color: '#333' },
   bold: { fontWeight: 'bold' },
 
-  fab: { position: 'absolute', bottom: 20, right: 20, width: 60, height: 60, backgroundColor: '#2c3e50', borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+  fab: { position: 'absolute', bottom: '15%', right: 20, width: 60, height: 60, backgroundColor: '#2c3e50', borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 5 },
   fabText: { fontSize: 30, color: '#fff', fontWeight: 'bold' },
 
   modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
@@ -198,7 +218,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, fontWeight: '500' },
   input: { height: 45, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 10 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  saveButton: { flex: 1, backgroundColor: '#2c3e50', padding: 10, borderRadius: 8, alignItems: 'center', marginRight : 4 },
+  saveButton: { flex: 1, backgroundColor: '#2c3e50', padding: 10, borderRadius: 8, alignItems: 'center', marginRight: 4 },
   saveButtonText: { color: '#fff', fontSize: 16 },
   closeButton: { flex: 1, backgroundColor: '#d9534f', padding: 10, borderRadius: 8, alignItems: 'center' },
   closeButtonText: { color: '#fff', fontSize: 16 },

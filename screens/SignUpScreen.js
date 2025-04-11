@@ -1,39 +1,132 @@
-import React, { useState, useRef , useEffect} from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Animated, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, Alert,  Animated  } from 'react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons'; // For fingerprint icon
 import Logo from '../components/Logo';
-import { createUserTable, insertUserData, getAllUserData } from '../store/database';
+import { insertUserData } from '../store/database';
+import AlertBox from '../components/AlertBox';
 
 const SignUpScreen = ({ navigation }) => {
+  const [step, setStep] = useState(1);
   const [name, setName] = useState('');
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
+  const [pin, setPin] = useState(['', '', '', '']);
+  const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
   const [bioMetric, setBioMetric] = useState(false);
-  const switchAnim = useRef(new Animated.Value(0)).current; // For animation
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const pinRefs = useRef([]);
+  const confirmPinRefs = useRef([]);
+  const switchAnim = useRef(new Animated.Value(0)).current;
 
-  const handleSignUp = async () => {
-    if (pin === confirmPin) {
+  useEffect(() => {
+    checkBiometricSupport();
+  }, []);
 
-      try {
-        await insertUserData(name, pin, bioMetric)
-          .then(() => console.log('User Data inserted successfully'))
-          .catch(err => console.error('Insert User error', err));;
-        Alert.alert('Success', 'User Sign Up Successfully!');
+  const showAlert = (type, message) => {
+    setAlertType(type);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
 
-        setName('')
-        setPin('')
-        setBioMetric('')
-        navigation.navigate('Login')
-      } catch (err) {
-        console.log(`Error File User create ${err}`)
-      }
-      navigation.navigate('Login');
-    } else {
-      Alert.alert('Error', 'Pins do not match');
+  const checkBiometricSupport = async () => {
+    const isBiometricAvailable = await LocalAuthentication.hasHardwareAsync();
+    const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+    if (!isBiometricAvailable || supportedTypes.length === 0 || !isEnrolled) {
+      showAlert('error', 'Your device does not support biometric authentication or it is not set up.');
+      setBioMetric(false);
     }
   };
 
-  const toggleSwitch = () => {
+  const handlePinChange = (index, value, isConfirm = false) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const updatedPin = isConfirm ? [...confirmPin] : [...pin];
+    updatedPin[index] = value;
+    if (isConfirm) {
+      setConfirmPin(updatedPin);
+    } else {
+      setPin(updatedPin);
+    }
+
+    if (value !== '' && index < 3) {
+      (isConfirm ? confirmPinRefs.current : pinRefs.current)[index + 1]?.focus();
+    }
+  };
+
+  const handleNextStep = () => {
+    if (step === 2 && pin.join('').length < 4) {
+      // Alert.alert('Error', 'Please enter a 4-digit PIN');
+      showAlert('error', 'Error', 'Please enter a 4-digit PIN');
+      return;
+    }
+    if (step === 3 && confirmPin.join('') !== pin.join('')) {
+      // Alert.alert('Error', 'Pins do not match');
+      showAlert('error', 'Pins do not match');
+      return;
+    }
+    setStep(step + 1);
+  };
+
+  const handleSignUp = async () => {
+
+    if (bioMetric) {
+      const isBiometricAvailable = await LocalAuthentication.hasHardwareAsync();
+      const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!isBiometricAvailable || supportedTypes.length === 0) {
+        showAlert('error', 'Your device does not support biometric authentication.');
+        setBioMetric(false);
+        return;
+      }
+
+      if (!isEnrolled) {
+        showAlert('warning', 'You need to set up fingerprint/Face ID in your device settings.');
+        setBioMetric(false);
+        return;
+      }
+    }
+
+    if (!name) {
+      showAlert('error', 'Please enter your name.');
+      return;
+    }
+
+    try {
+      let pinString = pin.join('');
+      console.log(`Creating user: ${name}, ${pinString}, ${bioMetric}`);
+      await insertUserData(name, pinString, bioMetric);
+      showAlert('success', 'User Sign Up Successfully!');
+      setName('');
+      setPin(['', '', '', '']);
+      setConfirmPin(['', '', '', '']);
+      setBioMetric(false);
+      setTimeout(() => navigation.navigate('Login'), 1000);
+    } catch (err) {
+      console.log(`Error in user creation: ${err}`);
+      showAlert('error', 'Something went wrong. Please try again.');
+    }
+  };
+
+  const toggleSwitch = async () => {
+    const isBiometricAvailable = await LocalAuthentication.hasHardwareAsync();
+    const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+    if (!isBiometricAvailable || supportedTypes.length === 0) {
+      showAlert('error', 'Your device does not support biometric authentication.');
+      return;
+    }
+
+    if (!isEnrolled) {
+      showAlert('warning', 'You need to set up fingerprint/Face ID in your device settings.');
+      return;
+    }
+
     const toValue = bioMetric ? 0 : 1;
     Animated.timing(switchAnim, {
       toValue,
@@ -43,185 +136,188 @@ const SignUpScreen = ({ navigation }) => {
     setBioMetric(!bioMetric);
   };
 
-  const switchTranslateX = switchAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 24], // Adjust based on the size of the switch
-  });
-
   return (
-    <LinearGradient colors={['#fbfcfc', '#fbfcfc']} style={styles.container}>
-      <Logo />
+    <View style={styles.container}>
+      {/* Blue Gradient Top Section */}
+      <LinearGradient colors={['#4A67F0', '#4A67F0']} style={styles.gradientContainer}>
+        
+        {/* Title at the Top */}
+        <Text style={styles.title}>Sign Up</Text>
+
+        {/* Centered Logo */}
+        <View style={styles.logoContainer}>
+          <Logo style={styles.logo} />
+        </View>
+
+        {/* Progress Bar at the Bottom */}
+        <View style={styles.progressBarContainer}>
+          {[1, 2, 3, 4].map((s, index) => (
+            <View
+              key={index}
+              style={[
+                styles.progressDot,
+                step > s ? styles.successDot : step === s ? styles.activeDot : styles.inactiveDot,
+              ]}
+            />
+          ))}
+        </View>
+
+      </LinearGradient>
+
+      {/* White Card Bottom Section */}
       <View style={styles.content}>
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          placeholderTextColor="#999"
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          style={styles.inputPassword}
-          placeholder="PIN"
-          placeholderTextColor="#999"
-          secureTextEntry
-          value={pin}
-          onChangeText={setPin}
-          keyboardType="numeric"
-          maxLength={4}
-        />
-        <TextInput
-          style={styles.inputPassword}
-          placeholder="Confirm PIN"
-          placeholderTextColor="#999"
-          secureTextEntry
-          value={confirmPin}
-          onChangeText={setConfirmPin}
-          keyboardType="numeric"
-          maxLength={4}
-        />
-        <View style={styles.bioMetricContainer}>
-          <Text style={styles.bioMetricText}>Enable Biometric</Text>
-          <TouchableOpacity style={styles.switchContainer} onPress={toggleSwitch} activeOpacity={0.8}>
-            <Animated.View
-              style={[
-                styles.switchBackground,
-                { backgroundColor: bioMetric ? '#82e0aa' : '#2c3e50' },
-              ]}
+        {step === 1 && (
+          <>
+            <Text style={styles.label}>Enter Your Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Name"
+              placeholderTextColor="#999"
+              value={name}
+              onChangeText={setName}
             />
-            <Animated.View
-              style={[
-                styles.switchThumb,
-                { transform: [{ translateX: switchTranslateX }] },
-                { backgroundColor: bioMetric ? '#2c3e50' : '#f4f3f4' },
-              ]}
-            />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-          <Text style={styles.signUpButtonText}>Sign Up</Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNextStep}>
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <Text style={styles.label}>Set a 4-digit PIN</Text>
+            <View style={styles.pinContainer}>
+              {pin.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  style={styles.pinInput}
+                  maxLength={1}
+                  keyboardType="numeric"
+                  ref={(ref) => (pinRefs.current[index] = ref)}
+                  value={digit}
+                  onChangeText={(value) => handlePinChange(index, value)}
+                />
+              ))}
+            </View>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNextStep}>
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <Text style={styles.label}>Confirm Your PIN</Text>
+            <View style={styles.pinContainer}>
+              {confirmPin.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  style={styles.pinInput}
+                  maxLength={1}
+                  keyboardType="numeric"
+                  ref={(ref) => (confirmPinRefs.current[index] = ref)}
+                  value={digit}
+                  onChangeText={(value) => handlePinChange(index, value, true)}
+                />
+              ))}
+            </View>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNextStep}>
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <Text style={styles.label}>Enable Biometric Authentication?</Text>
+            <TouchableOpacity style={styles.toggleButton} onPress={toggleSwitch}>
+              <MaterialIcons
+                name="fingerprint"
+                size={60}
+                color={bioMetric ? '#0078D4' : '#000'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.nextButton} onPress={handleSignUp}>
+              <Text style={styles.nextButtonText}>Sign Up</Text>
+            </TouchableOpacity>
+            <AlertBox show={alertVisible} type={alertType} message={alertMessage} onClose={() => setAlertVisible(false)} />
+          </>
+        )}
       </View>
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={() => {
-          navigation.navigate('Login');
-        }}
-      >
-        <View style={styles.signButton}>
-          <Image
-            source={require('../assets/leftA.png')}
-            style={styles.fingerprintIcon}
-          />
-          <Text style={styles.signButtonText}>Sign Up</Text>
-        </View>
-      </TouchableOpacity>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: '#fff' },
+  gradientContainer: {
+    height: '60%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    paddingTop: 50,
+    paddingBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 20,
+  },
+  logoContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    width: '80%',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
+  logo: {
+    justifyContent: 'center',
+    alignItems : 'center',
   },
+  progressBarContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  progressDot: {
+    width: 40,
+    height: 5,
+    borderRadius: 7.5,
+    marginHorizontal: 5,
+  },
+  successDot: { backgroundColor: '#00FF00' },
+  activeDot: { backgroundColor: '#fff' },
+  inactiveDot: { backgroundColor: '#bbb' },
+  content: { flex: 1, padding: 20, alignItems: 'center' },
+  label: { fontSize: 18, fontWeight: 'bold', color: '#333' , marginBottom: '10%', marginTop: '5%'},
   input: {
     width: '100%',
     height: 50,
-    backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 15,
-    marginBottom: 20,
     fontSize: 16,
-    color: '#333',
     borderWidth: 1,
     borderColor: '#ddd',
-  },
-  inputPassword : {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 15,
     marginBottom: 20,
+  },
+  pinContainer: { flexDirection: 'row', justifyContent: 'space-between', width: '80%', marginBottom: 20 },
+  pinInput: {
+    width: 60,
+    height: 60,
     fontSize: 20,
-    color: '#333',
+    textAlign: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
+    borderRadius: 20,
   },
-  bioMetricContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
-  },
-  bioMetricText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  switchContainer: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  switchBackground: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 15,
-    position: 'absolute',
-  },
-  switchThumb: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#f4f3f4',
-    position: 'absolute',
-    top: 2,
-    left: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  signUpButton: {
+  nextButton: {
     width: '100%',
     height: 50,
-    backgroundColor: '#2c3e50',
+    backgroundColor: '#0078D4',
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: '10%',
   },
-  signUpButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  signButton: {
-    flexDirection: 'row', // Align children horizontally
-    alignItems: 'center', // Center children vertically
-    justifyContent: 'center', // Center children horizontally (optional)
-  },
-  signButtonText: {
-    marginRight: 8, // Add some spacing between the text and the image
-    fontSize: 16, // Adjust font size as needed
-    color: '#000', // Adjust text color as needed
-  },
-  fingerprintIcon: {
-    width: 24, // Adjust width as needed
-    height: 24, // Adjust height as needed
-    marginRight: 10
-  },
+  nextButtonText: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
 });
 
 export default SignUpScreen;

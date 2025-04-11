@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Appbar } from 'react-native-paper';
 import axios from 'axios';
 import { insertCardDetailsData } from '../store/database'; // Database function
 
@@ -38,9 +37,65 @@ const CreditCardScreen = ({ route, navigation }) => {
     }
   };
 
+  // Format Card Number into groups (e.g., 4985 9454 4594 4594)
+  const formatCardNumber = (text) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 16);
+    const formatted = cleaned.replace(/(.{4})/g, '$1 ').trim();
+    setCardNumber(formatted);
+  };
+
+  // Validate Expiry Date (Auto-Add / and Ensure MM/YY format)
+  const handleExpiryDateChange = (text) => {
+    let cleaned = text.replace(/\D/g, '').slice(0, 4); // Only numbers, max 4 digits
+
+    if (cleaned.length >= 2) {
+      cleaned = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
+    }
+
+    setValidDate(cleaned);
+  };
+
+  const validateExpiryDate = (date) => {
+    const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/; // MM/YY format
+    if (!regex.test(date)) {
+      return false;
+    }
+
+    const [month, year] = date.split("/").map(Number);
+    const currentYear = new Date().getFullYear() % 100; // Get last two digits of year
+    const currentMonth = new Date().getMonth() + 1;
+
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      return false; // Expired card
+    }
+
+    return true;
+  };
+
   const handleSubmit = async () => {
+    // Validation
     if (!bankName || !cardNumber || !cvv || !validDate || !cardholderName || !pin || !ifscCode || !branch || !city) {
       Alert.alert('Error', 'All fields are required');
+      return;
+    }
+
+    if (cardNumber.replace(/\s/g, '').length !== 16) {
+      Alert.alert("Invalid Card Number", "Card number must be exactly 16 digits.");
+      return;
+    }
+
+    if (cvv.length !== 3) {
+      Alert.alert("Invalid CVV", "CVV must be exactly 3 digits.");
+      return;
+    }
+
+    if (pin.length !== 4) {
+      Alert.alert("Invalid PIN", "PIN must be exactly 4 digits.");
+      return;
+    }
+
+    if (!validateExpiryDate(validDate)) {
+      Alert.alert("Invalid Expiry Date", "Enter a valid expiry date (MM/YY) that is not expired.");
       return;
     }
 
@@ -65,88 +120,44 @@ const CreditCardScreen = ({ route, navigation }) => {
   };
 
   return (
-    <>
-      <Appbar.Header style={styles.appBar}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title={cardType} />
-      </Appbar.Header>
+    <View style={styles.container}>
+      <View style={styles.innerContainer}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <Text style={styles.headerText}>{cardType} Form</Text>
 
-      <View style={styles.container}>
-        <View style={styles.innerContainer}>
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <Text style={styles.headerText}>{cardType} Form</Text>
-
-            {/* IFSC Code Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>IFSC Code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter IFSC Code"
-                value={ifscCode}
-                onChangeText={setIfscCode}
-                keyboardType="default"
-              />
-              <TouchableOpacity style={styles.fetchButton} onPress={fetchBankDetails}>
-                <Text style={styles.fetchButtonText}>Fetch Bank</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Bank Name (Auto-filled) */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Bank Name</Text>
-              <TextInput style={styles.input} placeholder="Bank Name" value={bankName} editable={false} />
-            </View>
-
-            {/* Branch (Auto-filled) */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Branch</Text>
-              <TextInput style={styles.input} placeholder="Branch" value={branch} editable={false} />
-            </View>
-
-            {/* City (Auto-filled) */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>City</Text>
-              <TextInput style={styles.input} placeholder="City" value={city} editable={false} />
-            </View>
-
-            {/* Card Number */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Card Number</Text>
-              <TextInput style={styles.input} placeholder="Enter Card Number" value={cardNumber} onChangeText={setCardNumber} keyboardType="numeric" />
-            </View>
-
-            {/* CVV */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>CVV</Text>
-              <TextInput style={styles.input} placeholder="Enter CVV" value={cvv} onChangeText={setCvv} keyboardType="numeric"/>
-            </View>
-
-            {/* Expiry Date */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Expiry Date</Text>
-              <TextInput style={styles.input} placeholder="MM/YY" value={validDate} onChangeText={setValidDate} keyboardType="numeric" />
-            </View>
-
-            {/* Cardholder Name */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Cardholder Name</Text>
-              <TextInput style={styles.input} placeholder="Enter Cardholder Name" value={cardholderName} onChangeText={setCardholderName} />
-            </View>
-
-            {/* PIN */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>PIN</Text>
-              <TextInput style={styles.input} placeholder="Enter PIN" value={pin} onChangeText={setPin} keyboardType="numeric"/>
-            </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>Submit</Text>
+          {/* IFSC Code */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>IFSC Code</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter IFSC Code"
+              value={ifscCode}
+              onChangeText={setIfscCode}
+            />
+            <TouchableOpacity style={styles.fetchButton} onPress={fetchBankDetails}>
+              <Text style={styles.fetchButtonText}>Fetch Bank</Text>
             </TouchableOpacity>
-          </ScrollView>
-        </View>
+          </View>
+
+          {/* Auto-filled fields */}
+          <View style={styles.inputContainer}><Text style={styles.label}>Bank Name</Text><TextInput style={styles.input} value={bankName} editable={false} /></View>
+          <View style={styles.inputContainer}><Text style={styles.label}>Branch</Text><TextInput style={styles.input} value={branch} editable={false} /></View>
+          <View style={styles.inputContainer}><Text style={styles.label}>City</Text><TextInput style={styles.input} value={city} editable={false} /></View>
+
+          {/* Card Details */}
+          <View style={styles.inputContainer}><Text style={styles.label}>Card Number</Text><TextInput style={styles.input} value={cardNumber} onChangeText={formatCardNumber} keyboardType="numeric" maxLength={19} /></View>
+          <View style={styles.inputContainer}><Text style={styles.label}>CVV</Text><TextInput style={styles.input} value={cvv} onChangeText={setCvv} keyboardType="numeric" maxLength={3} /></View>
+          <View style={styles.inputContainer}><Text style={styles.label}>Expiry Date (MM/YY)</Text><TextInput style={styles.input} value={validDate} onChangeText={handleExpiryDateChange} keyboardType="numeric" maxLength={5} /></View>
+          <View style={styles.inputContainer}><Text style={styles.label}>Cardholder Name</Text><TextInput style={styles.input} value={cardholderName} onChangeText={setCardholderName} /></View>
+          <View style={styles.inputContainer}><Text style={styles.label}>PIN</Text><TextInput style={styles.input} value={pin} onChangeText={setPin} keyboardType="numeric" maxLength={4} /></View>
+
+          {/* Submit Button */}
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>Submit</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
-    </>
+    </View>
   );
 };
 
@@ -161,8 +172,7 @@ const styles = StyleSheet.create({
   fetchButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   submitButton: { width: '100%', height: 50, backgroundColor: '#2c3e50', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
   submitButtonText: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  appBar: { elevation: 4, shadowColor: '#000' },
-  innerContainer: { width: '100%', backgroundColor: '#fff', borderRadius: 15, padding: 20, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 5, top: 30 },
+  innerContainer: { width: '100%', backgroundColor: '#fff', borderRadius: 15, padding: 20, elevation: 5 },
 });
 
 export default CreditCardScreen;

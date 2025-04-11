@@ -104,10 +104,6 @@ const SettingsScreen = ({ navigation }) => {
   };
   return (
     <>
-    <Appbar.Header style={styles.appBar}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Setting" />
-      </Appbar.Header>
       <View >
         <Card style={styles.actionCard}>
           <Text style={styles.sectionTitle}>Data Transfer</Text>

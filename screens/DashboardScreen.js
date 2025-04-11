@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Card, Title, Paragraph, ActivityIndicator } from 'react-native-paper';
 import { Feather } from '@expo/vector-icons';
 import { getAllBankAccountData, getAllCardDetailsData, getAllNetBankingData } from '../store/database';
+import BottomTabNavigator from '../components/BottomTabNavigator';
 
 const DashboardScreen = ({ navigation }) => {
   const [bankAccounts, setBankAccounts] = useState([]);
@@ -40,55 +41,56 @@ const DashboardScreen = ({ navigation }) => {
   }
 
   return (
-    <LinearGradient colors={['#fbfcfc', '#fbfcfc']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.dashboardTitle}>Dashboard</Text>
+    <>
+      <LinearGradient colors={['#fbfcfc', '#fbfcfc']} style={styles.container}>
+        <ScrollView contentContainerStyle={styles.contentContainer}>
 
-        {/* Bank Accounts Card */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.cardHeader}>
-              <Feather name="database" size={28} color="#3498db" />
-              <Title style={styles.cardTitle}>Bank Accounts</Title>
-            </View>
-            <Paragraph>{bankAccounts.length} accounts found</Paragraph>
-          </Card.Content>
-        </Card>
+          {/* Bank Accounts Card */}
+          <Card style={styles.card}>
+            <Card.Content>
+              <View style={styles.cardHeader}>
+                <Feather name="database" size={28} color="#3498db" />
+                <Title style={styles.cardTitle}>Bank Accounts</Title>
+              </View>
+              <Paragraph>{bankAccounts.length} accounts found</Paragraph>
+            </Card.Content>
+          </Card>
 
-        {/* Card Details */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.cardHeader}>
-              <Feather name="credit-card" size={28} color="#e74c3c" />
-              <Title style={styles.cardTitle}>Card Details</Title>
-            </View>
-            <Paragraph>{cardDetails.length} cards saved</Paragraph>
-          </Card.Content>
-        </Card>
+          {/* Card Details */}
+          <Card style={styles.card}>
+            <Card.Content>
+              <View style={styles.cardHeader}>
+                <Feather name="credit-card" size={28} color="#e74c3c" />
+                <Title style={styles.cardTitle}>Card Details</Title>
+              </View>
+              <Paragraph>{cardDetails.length} cards saved</Paragraph>
+            </Card.Content>
+          </Card>
 
-        {/* Net Banking */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.cardHeader}>
-              <Feather name="globe" size={28} color="#27ae60" />
-              <Title style={styles.cardTitle}>Net Banking</Title>
-            </View>
-            <Paragraph>{netBanking.length} accounts linked</Paragraph>
-          </Card.Content>
-        </Card>
-      </ScrollView>
-    </LinearGradient>
+          {/* Net Banking */}
+          <Card style={styles.card}>
+            <Card.Content>
+              <View style={styles.cardHeader}>
+                <Feather name="globe" size={28} color="#27ae60" />
+                <Title style={styles.cardTitle}>Net Banking</Title>
+              </View>
+              <Paragraph>{netBanking.length} accounts linked</Paragraph>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </LinearGradient>
+      <BottomTabNavigator />
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 40,
+    paddingTop: 10,
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 30,
   },
   dashboardTitle: {
     fontSize: 28,

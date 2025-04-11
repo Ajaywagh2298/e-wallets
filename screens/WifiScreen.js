@@ -49,10 +49,6 @@ const WifiScreen = ({ navigation }) => {
 
   return (
     <>
-      <Appbar.Header style={styles.appBar}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="WiFi Details" />
-      </Appbar.Header>
       <View style={styles.container}>
         <View style={styles.innerContainer}>
           <ScrollView contentContainerStyle={styles.scrollContainer}>

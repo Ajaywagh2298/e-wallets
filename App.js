@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet , Switchs} from 'react-native';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons'; // Import Icon
+import { Ionicons } from '@expo/vector-icons'; // Icon Import
 
 import SignUpScreen from './screens/SignUpScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -22,35 +21,15 @@ import OtherScreen from './screens/OtherScreen';
 import DigitalListScreen from './screens/DigitalListScreen';
 import DematScreen from './screens/DematScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import FinanceListScreen from './screens/FinanceListScreen'
+import FinanceListScreen from './screens/FinanceListScreen';
 import { 
   createUserTable, createEmailTable, createNetBankingTable, createCardDetailsTable, 
   createBankAccountTable, createDematTable, createAppAccountTable, 
-  createNotePadTable, createOtherTable , createConfigTable, insertConfig
+  createNotePadTable, createOtherTable, createConfigTable
 } from './store/database';
 import { initConfigService } from './store/configService';
 
-const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
-
-function MainDrawer({ navigation }) {
-  return (
-    <Drawer.Navigator
-      screenOptions={{
-        headerRight: () => (
-          <TouchableOpacity style={{ marginRight: 15 }} onPress={() => navigation.navigate('Setting')}>
-            <Ionicons name="settings-outline" size={24} color="black" />
-          </TouchableOpacity>
-        ),
-      }}
-    >
-      <Drawer.Screen name="Dashboard" component={DashboardScreen} />
-      <Drawer.Screen name="Finance" component={FinanceScreen} />
-      <Drawer.Screen name="Digital" component={DigitalScreen} />
-      <Drawer.Screen name="Other" component={OtherScreen} />
-    </Drawer.Navigator>
-  );
-}
 
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
@@ -103,12 +82,27 @@ export default function App() {
   }
 
   return (
-    
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator 
+        initialRouteName="Login" 
+        screenOptions={({ route, navigation}) => ({
+          // headerRight: () => (
+          //   <TouchableOpacity style={{ marginRight: 15 }} onPress={() => navigation.navigate('Setting')}>
+          //     <Ionicons name="settings-outline" size={24} color="black" />
+          //   </TouchableOpacity>
+          // ),
+          headerStyle: {
+            backgroundColor: '#fff',
+            elevation: 0,
+            shadowOpacity: 0,
+          },
+          headerTitleAlign: 'center',
+          headerShown: !(route.name === 'Login' || route.name === 'SignUp'),
+        })}
+      >
         <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Dashboard" component={MainDrawer} />
+        <Stack.Screen name="Login" component={LoginScreen}/>
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Bank Account" component={BankAccountScreen} />
         <Stack.Screen name="Card" component={CreditCardScreen} />
         <Stack.Screen name="Net Banking" component={NetBankingScreen} />
@@ -117,12 +111,16 @@ export default function App() {
         <Stack.Screen name="App" component={AppScreen} />
         <Stack.Screen name="Notes" component={NotesScreen} />
         <Stack.Screen name="Pan" component={PanScreen} />
-        <Stack.Screen name='Digital List' component={DigitalListScreen} />
-        <Stack.Screen name='Demat Screen' component={DematScreen} />
-        <Stack.Screen name="Setting" component={SettingsScreen} />
+        <Stack.Screen name="Digital List" component={DigitalListScreen} />
+        <Stack.Screen name="Demat Screen" component={DematScreen} />
+        <Stack.Screen name="Profile" component={SettingsScreen} />
         <Stack.Screen name="Finance List" component={FinanceListScreen} />
+        <Stack.Screen name="Finance" component={FinanceScreen} />
+        <Stack.Screen name="Digital" component={DigitalScreen} />
+        <Stack.Screen name="Other" component={OtherScreen} />
       </Stack.Navigator>
     </NavigationContainer>
+    
   );
 }
 

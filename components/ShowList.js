@@ -1,27 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, Share, ActivityIndicator
-} from 'react-native';
-import { Card, Button, Provider as PaperProvider } from 'react-native-paper';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Dimensions, Modal, TouchableOpacity, Share } from 'react-native';
+import { Card, Provider as PaperProvider, Button } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { getFilteredConfig } from '../store/database';
+import CreditCardDetails from './CreditCardDetails';
+import ServiceCardDetails from './ServiceCardDetails';
 
-// Main Component
+const screenWidth = Dimensions.get('window').width;
+
+const subjectColors = ['#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#e74c3c', '#34495e'];
+const subjectIcons = {
+  'Bank Account': 'bank',
+  'Credit Card': 'credit-card',
+  'Debit Card': 'credit-card-outline',
+  'Net Banking': 'desktop-mac',
+  'Demat': 'chart-line',
+};
+
 const ShowList = ({ title, data }) => {
-  const [selectedItem, setSelectedItem] = useState(null);
   const [listSetting, setListSetting] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     const initSetting = async () => {
       setLoading(true);
       try {
         let sync = await getFilteredConfig('title', title);
-        if (sync && sync.length > 0) {
+        if (sync?.length > 0) {
           sync = sync.map(sc => ({
             ...sc,
-            mainHeader: JSON.parse(sc.mainHeader),
-            showDataHeader: JSON.parse(sc.showDataHeader),
+            mainHeader: JSON.parse(sc.mainHeader || '[]'),
+            showDataHeader: JSON.parse(sc.showDataHeader || '[]'),
           }));
           setListSetting(sync);
         }
@@ -30,25 +41,19 @@ const ShowList = ({ title, data }) => {
       }
       setLoading(false);
     };
-
     initSetting();
   }, [title]);
 
   const listConfig = listSetting.find(item => item.title === title);
-
-  if (loading) {
-    return <ActivityIndicator size="large" color="#6200ee" style={styles.loading} />;
-  }
-
-  if (!listConfig) {
-    return <Text style={styles.errorText}>Invalid List Setting</Text>;
-  }
+  if (loading) return <ActivityIndicator size="large" color="#6200ee" style={styles.loading} />;
+  if (!listConfig) return <Text style={styles.errorText}>Invalid List Setting</Text>;
 
   const { mainHeader, showDataHeader, isShare } = listConfig;
 
   const handleShare = async (item) => {
     let shareText = showDataHeader
-      .map(field => `${field.headerValue}: ${item[field.headerKey] || ''}`)
+      .filter(field => field.isVisible === 1)
+      .map(field => `${field.headerValue}: ${item[field.headerKey] || 'N/A'}`)
       .join('\n');
 
     try {
@@ -58,173 +63,175 @@ const ShowList = ({ title, data }) => {
     }
   };
 
+  const renderItem = ({ item, index }) => {
+    const color = subjectColors[index % subjectColors.length];
+    const icon = subjectIcons[title] || 'bank';
+
+    return (
+      <TouchableOpacity onPress={() => setSelectedItem(item)}>
+        <Card style={styles.card}>
+          <View style={styles.cardContent}>
+            <View style={[styles.iconContainer, { backgroundColor: color }]}>
+              <MaterialCommunityIcons name={icon} size={28} color="white" />
+            </View>
+            <View style={styles.textContainer}>
+              {mainHeader.length > 0 && (
+                <>
+                  <Text style={styles.mainText}>{mainHeader[0]?.headerValue}</Text>
+                  <Text style={styles.subText}>{item[mainHeader[0]?.headerKey] || 'N/A'}</Text>
+                </>
+              )}
+            </View>
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <PaperProvider>
       <View style={styles.container}>
-        {/* List Header */}
         <Text style={styles.header}>{title}</Text>
-
-        {/* Data List */}
         <FlatList
           data={data}
           keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item, index }) => (
-            <TouchableOpacity 
-              style={styles.listItem} 
-              activeOpacity={0.7} 
-              onPress={() => setSelectedItem(item)}
-            >
-              <View style={styles.card}>
-                <View style={styles.leftSection}>
-                  <Text style={styles.serial}>{index + 1}.</Text>
-                </View>
-                <View style={styles.centerSection}>
-                  <Text style={styles.mainHeaderText}>
-                    {mainHeader[0]?.headerValue}:
-                  </Text>
-                  <Text style={styles.mainText}>
-                    {item[mainHeader[0]?.headerKey] || 'N/A'}
-                  </Text>
-                </View>
-                <View style={styles.rightSection}>
-                  <Feather name="chevron-right" size={22} color="#777" />
-                </View>
-              </View>
-            </TouchableOpacity>
-          )}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
         />
 
-        {/* Detail Modal */}
-        <Modal visible={!!selectedItem} animationType="fade" transparent>
+        {selectedItem && (
+          <Modal visible={!!selectedItem} transparent animationType="fade">
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Card style={styles.card}>
-                <Card.Title title={title} titleStyle={styles.cardTitle} />
-                <Card.Content>
-                  {showDataHeader.map((field, index) => (
-                    field.isVisible === 1 && (
-                    <Text key={index} style={styles.detailText}>
-                      <Text style={styles.bold}>{field.headerValue}: </Text>
-                      {selectedItem?.[field.headerKey] || 'N/A'}
-                    </Text>
-                    )
-                  ))}
-                </Card.Content>
-                <Card.Actions>
-                  {isShare === 1 && (
-                    <Button icon="share-variant" onPress={() => handleShare(selectedItem)}>
-                      Share
-                    </Button>
-                  )}
-                  <Button onPress={() => setSelectedItem(null)} style={styles.cancelbtn}>
-                    Close
-                  </Button>
-                </Card.Actions>
-              </Card>
+            <View style={styles.modalContent}>
+              {/* Render components conditionally */}
+              {title === "Card Details" ? (
+                <>
+                  <CreditCardDetails cardData={selectedItem} />
+                </>
+              ) : (
+                <>
+                  <ServiceCardDetails
+                    selectedItem={selectedItem}
+                    showDataHeader={showDataHeader}
+                    isShare={isShare}
+                    title={ title }
+                  />
+                </>
+              )}
+        
+             
             </View>
+             {/* Close Button */}
+             <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedItem(null)}>
+                <MaterialCommunityIcons name="close-circle" size={30} color="white" />
+              </TouchableOpacity>
           </View>
-        </Modal>
+        </Modal>        
+        )}
       </View>
     </PaperProvider>
   );
 };
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    backgroundColor: '#F7F9FC',
+    width: screenWidth - 24,
+    alignSelf: 'center',
   },
   header: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 16,
     color: '#222',
   },
-  listItem: {
-    marginBottom: 12,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
+    backgroundColor: 'white',
     borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
+    borderBottomLeftRadius: 50,
+    borderTopLeftRadius: 50,
+    marginLeft: 10,
+    marginRight: 10,
   },
-  leftSection: {
-    width: 40,
+  cardContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  serial: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  centerSection: {
+  textContainer: {
     flex: 1,
-    justifyContent: 'center',
-  },
-  mainHeaderText: {
-    fontSize: 14,
-    color: '#888',
-    fontWeight: '500',
   },
   mainText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#222',
+  },
+  subText: {
+    fontSize: 15,
+    color: '#666',
     marginTop: 2,
   },
-  rightSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  time: {
+    fontSize: 14,
+    color: '#999',
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent background
   },
-  modalContainer: {
-    width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    elevation: 5,
+  modalContent: {
+    width: "90%",
+    backgroundColor: "transparent", // Ensures the card has no extra background
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButton: {
+    marginTop: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 50,
+    padding: 10,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#222',
   },
   detailText: {
     fontSize: 16,
-    marginBottom: 8,
+    color: '#333',
+    marginVertical: 4,
   },
   bold: {
     fontWeight: 'bold',
-    color: '#333',
-  },
-  errorText: {
-    textAlign: 'center',
-    color: 'red',
-    marginTop: 20,
-  },
-  loading: {
-    marginTop: 20,
   },
   cancelbtn: {
-    backgroundColor: '#2c3e50',
+    backgroundColor: '#e74c3c',
+    color: 'white',
+  },
+  modal: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

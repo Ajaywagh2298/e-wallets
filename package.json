@@ -1,5 +1,5 @@
 {
-  "name": "e-wallets",
+  "name": "LAKSHCRYPT",
   "license": "0BSD",
   "version": "1.0.0",
   "main": "index.js",
@@ -13,6 +13,7 @@
     "@boltcode/react-native-sqlite-storage": "^7.0.0",
     "@expo/metro-runtime": "~4.0.1",
     "@react-native-async-storage/async-storage": "^2.1.1",
+    "@react-native-ml-kit/text-recognition": "^1.5.2",
     "@react-native-picker/picker": "^2.11.0",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/drawer": "^7.1.1",
@@ -21,6 +22,7 @@
     "axios": "^1.4.0",
     "banks-db": "^0.23.0",
     "expo": "~52.0.31",
+    "expo-blur": "^14.0.3",
     "expo-crypto": "^14.0.2",
     "expo-document-picker": "^13.0.3",
     "expo-file-system": "^18.0.10",
@@ -33,6 +35,7 @@
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
     "react-native-autocomplete-input": "^5.5.6",
+    "react-native-awesome-alerts": "^2.0.0",
     "react-native-draggable-flatlist": "^4.0.1",
     "react-native-gesture-handler": "^2.23.0",
     "react-native-paper": "^5.13.1",
@@ -40,7 +43,9 @@
     "react-native-safe-area-context": "^5.2.0",
     "react-native-screens": "^4.6.0",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-web": "~0.19.13"
+    "react-native-vision-camera": "^4.6.4",
+    "react-native-web": "~0.19.13",
+    "react-native-webview": "^13.13.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

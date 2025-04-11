@@ -5,25 +5,26 @@ const Logo = () => {
   return (
     <View style={styles.walletLogoContain}>
       <Image source={require('../assets/wallet.png')} style={styles.walletIcon} />
-      <Text style={styles.walletLogo}>Wallet's</Text>
+      {/* <Text style={styles.walletLogo}>Wallet's</Text> */}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   walletLogoContain: {
-    position: 'absolute',
-    top: 100,
+    position: 'relative',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   walletIcon: {
-    width: 50,
-    height: 50,
+    marginTop : 20,
+    width: 350,
+    height: 350,
   },
   walletLogo: {
     fontSize: 40,
     fontFamily: 'monospace',
-    color: '#2c3e50',
+    color: '#ffffff',
     marginTop: 10,
   },
 });

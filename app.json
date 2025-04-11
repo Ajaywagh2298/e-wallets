@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "e-wallets",
-    "slug": "e-wallets",
+    "name": "LAKSHCRYPT",
+    "slug": "LAKSHCRYPT",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
