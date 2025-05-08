@@ -4,7 +4,7 @@ import { Appbar } from 'react-native-paper';
 import { Checkbox, Button, Card, Divider, IconButton } from "react-native-paper";
 import { ProgressBar } from "react-native-paper";
 import { Picker } from "@react-native-picker/picker";
-import { getAllConfig, updateConfig , importDatabase, exportDatabase} from "../store/database";
+import { getAllConfig, updateConfig , importDatabase, exportDatabase} from "../src/database";
 import { reloadAppAsync } from "expo";
 import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';

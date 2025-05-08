@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { Appbar } from 'react-native-paper';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
-import { insertBankAccountData } from '../store/database'; // Database function
-import BottomTabNavigator from '../components/BottomTabNavigator';
+import { insertQuery } from '../src/controller'; 
+import { encrypt } from '../src/utils'; 
+import { LinearGradient } from 'expo-linear-gradient';
+import { AntDesign } from '@expo/vector-icons';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const BankAccountScreen = ({ navigation }) => {
   const [ifscCode, setIfscCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
+  const [accountType, setAccountType] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [bankName, setBankName] = useState('');
   const [branch, setBranch] = useState('');
   const [city, setCity] = useState('');
+  const [branchAddress, setBranchAddress] = useState('');
+  const [micrCode, setMicrCode] = useState('');
+  const [nomineeName, setNomineeName] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [notes, setNotes] = useState('');
   const [cifCode, setCifCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   // Fetch Bank Details using IFSC Code
   const fetchBankDetails = async (ifsc) => {
@@ -26,6 +39,8 @@ const BankAccountScreen = ({ navigation }) => {
           setBankName(response.data.BANK);
           setBranch(response.data.BRANCH);
           setCity(response.data.CITY);
+          setBranchAddress(response.data.ADDRESS);
+          setMicrCode(response.data.MICR);
         } else {
           Alert.alert("Invalid IFSC", "Please enter a valid IFSC code.");
         }
@@ -43,8 +58,24 @@ const BankAccountScreen = ({ navigation }) => {
     }
 
     try {
-      console.info(accountNumber, accountHolderName, bankName, branch, city, ifscCode, cifCode)
-      await insertBankAccountData(accountNumber, accountHolderName, bankName, branch, city, ifscCode, cifCode);
+      let dataObj = {
+        accountNumber : accountNumber ? await encrypt(accountNumber) : '',
+        accountHolderName : accountHolderName ? await encrypt(accountHolderName) : '',
+        accountType : accountType ? accountType : '',
+        bankName : bankName,
+        branch : branch ,
+        branchAddress : branchAddress,
+        city : city,
+        ifscCode : ifscCode ? await encrypt(ifscCode) : '',
+        cifCode : cifCode ? await encrypt(cifCode) : '',
+        micrCode : micrCode ? await encrypt(micrCode) : '',
+        mobileNumber : mobileNumber ? await encrypt(mobileNumber) : '', 
+        nomineeName : nomineeName ? await encrypt(nomineeName) : '',
+        upiId : upiId ? await encrypt(upiId) : '',
+        notes : notes ? await encrypt(notes) : '',
+      }
+
+      await insertQuery('bank_account', dataObj);
       Alert.alert('Success', 'Bank account details saved!');
       navigation.navigate('Dashboard');
 
@@ -56,9 +87,22 @@ const BankAccountScreen = ({ navigation }) => {
       setBranch('');
       setCity('');
       setCifCode('');
+      setMicrCode('');
+      setNomineeName('');
+      setUpiId('');
+      setNotes('');
+      setAccountType('');
+      setMobileNumber('');
+      setBranchAddress('');
+      setShowMore(false);
     } catch (error) {
       Alert.alert('Error', 'Failed to save bank details');
     }
+  };
+
+  const toggleMoreFields = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowMore(!showMore);
   };
 
   return (
@@ -67,8 +111,6 @@ const BankAccountScreen = ({ navigation }) => {
         <View style={styles.innerContainer}>
 
           <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-            <Text style={styles.headerText}>Bank Account Form</Text>
-
             {/* IFSC Code Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>IFSC Code</Text>
@@ -87,18 +129,6 @@ const BankAccountScreen = ({ navigation }) => {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Bank Name</Text>
               <TextInput style={styles.input} value={bankName} editable={false} />
-            </View>
-
-            {/* Branch Name (Auto-filled) */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Branch</Text>
-              <TextInput style={styles.input} value={branch} editable={false} />
-            </View>
-
-            {/* City Name (Auto-filled) */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>City</Text>
-              <TextInput style={styles.input} value={city} editable={false} />
             </View>
 
             {/* Account Number */}
@@ -124,6 +154,26 @@ const BankAccountScreen = ({ navigation }) => {
               />
             </View>
 
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>A/C Type</Text>
+              <Picker
+                selectedValue={accountType}
+                onValueChange={(itemValue) => setAccountType(itemValue)}
+                style={styles.input}
+              >
+                <Picker.Item label="Select Account Type" value="" />
+                <Picker.Item label="Savings" value="savings" />
+                <Picker.Item label="Current" value="current" />
+                <Picker.Item label="Salary" value="salary" />
+                <Picker.Item label="Recurring" value="recurring" />
+                <Picker.Item label="Fixed" value="fixed" />
+                <Picker.Item label="NRE" value="nre" />
+                <Picker.Item label="NRO" value="nro" />
+                <Picker.Item label="FCNR" value="fcnr" />
+                <Picker.Item label="Others" value="others" />
+              </Picker>
+            </View>
+
             {/* CIF Code */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>CIF Code</Text>
@@ -134,6 +184,62 @@ const BankAccountScreen = ({ navigation }) => {
                 onChangeText={setCifCode}
               />
             </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Link Mobile Number</Text>
+              <TextInput style={styles.input} value={mobileNumber}   onChangeText={setMobileNumber}/>
+            </View>
+
+            {/* City Name (Auto-filled) */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>City</Text>
+              <TextInput style={styles.input} value={city} editable={false} />
+            </View>
+
+            {/* Toggle Button */}
+            <TouchableOpacity activeOpacity={0.9} onPress={toggleMoreFields} style={styles.buttonWrapper}>
+  <LinearGradient
+    colors={['#74ebd5', '#ACB6E5']} // cool blue gradient
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 0 }}
+    style={styles.showMoreButton}
+  >
+    <AntDesign name={showMore ? 'up' : 'down'} size={18} color="#fff" style={{ marginRight: 8 }} />
+    <Text style={styles.showMoreButtonText}>
+      {showMore ? 'Hide Extra Fields' : 'Show More Fields'}
+    </Text>
+  </LinearGradient>
+</TouchableOpacity>
+
+            {showMore && (
+              <>
+                {/* Branch Name (Auto-filled) */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Branch</Text>
+                  <TextInput style={styles.input} value={branch} editable={false} />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Branch Address</Text>
+                  <TextInput style={styles.input} value={branchAddress} editable={false} />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>MICR Number</Text>
+                  <TextInput style={styles.input} value={micrCode} editable={true}   onChangeText={setMicrCode}/>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Nominee Name</Text>
+                  <TextInput style={styles.input} value={nomineeName} editable={true}  onChangeText={setNomineeName}/>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>UPI ID</Text>
+                  <TextInput style={styles.input} value={upiId} editable={true}  onChangeText={setUpiId}/>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Addition Info.</Text>
+                  <TextInput style={styles.input} value={notes} editable={true}  onChangeText={setNotes}/>
+                </View>
+              </>
+            )}
 
             {/* Submit Button */}
             {loading ? (
@@ -196,7 +302,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 5,
+    marginBottom: 20,
   },
   submitButtonText: {
     fontSize: 18,
@@ -217,7 +324,35 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    top : 30
+    top: 30
+  },
+  buttonWrapper: {
+    marginTop: 10,
+    marginBottom: 20,
+    alignItems: 'center',
+    alignSelf: 'center',
+    borderRadius: 30,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
+  
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+  },
+  
+  showMoreButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

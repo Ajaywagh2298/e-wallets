@@ -4,7 +4,8 @@ import {
     ScrollView, Alert 
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { createTable, insertEmailData } from '../store/database';
+import { insertQuery } from '../src/controller';
+import { encrypt } from '../src/utils';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const EmailScreen = ({ navigation }) => {
@@ -33,7 +34,13 @@ const EmailScreen = ({ navigation }) => {
         const companyName = companyType === 'Other' ? customCompany : companyType;
 
         try {
-            await insertEmailData(companyName, accountHolderName, emailId, password);
+            let data = {
+                companyName : customCompany || '', 
+                accountHolderName : accountHolderName ? await encrypt(accountHolderName) : '', 
+                email : emailId ? await encrypt(emailId) : '',
+                password : password ? await encrypt(password) : ''  
+            }
+            await insertQuery('email_details',data);
             Alert.alert('Success', 'Form submitted and saved successfully!');
             navigation.navigate('Dashboard');
 

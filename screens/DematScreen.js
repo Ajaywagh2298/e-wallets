@@ -1,169 +1,164 @@
-// EmailScreen.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Picker } from '@react-native-picker/picker';
-import { Appbar } from 'react-native-paper';
-import { insertDematData } from '../store/database';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert
+} from 'react-native';
+import { insertQuery } from '../src/controller';
+import { encrypt } from '../src/utils';
 
-const DeamtScreen  = ({ navigation }) => {
-    const [dematId, setDematId] = useState('');
-    const [username, setUserName] = useState('');
-    const [password, setPassword] = useState('');
-  
-    const handleSubmit = async () => {
-      if (!dematId || !username || !password) {
-        Alert.alert('Error', 'All fields are required');
-        return;
+const DematScreen = ({ navigation }) => {
+  const [brokerName, setBrokerName] = useState('');
+  const [dematAccountNumber, setDematAccountNumber] = useState('');
+  const [despositoryName, setDespositoryName] = useState('');
+  const [tradingAccountNumber, setTradingAccountNumber] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [email, setEmail] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [accountOpeningDate, setAccountOpeningDate] = useState('');
+  const [linkedBankAccount, setLinkedBankAccount] = useState('');
+  const [nomineeName, setNomineeName] = useState('');
+  const [tradingPin, setTradingPin] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = async () => {
+    if (!brokerName || !dematAccountNumber || !tradingAccountNumber || !tradingPin) {
+      Alert.alert('Error', 'Please fill all required fields.');
+      return;
+    }
+
+    try {
+      let encryptData = {
+        brokerName,
+        dematAccountNumber: dematAccountNumber ? encrypt(dematAccountNumber) : '',
+        despositoryName: despositoryName ? encrypt(despositoryName) : '',
+        tradingAccountNumber: tradingAccountNumber ? encrypt(tradingAccountNumber) : '',
+        clientId: clientId ? encrypt(clientId) : '',
+        email: email ? encrypt(email) : '',
+        mobileNumber: mobileNumber ? encrypt(mobileNumber) : '',
+        accountOpeningDate: accountOpeningDate ? encrypt(accountOpeningDate) : '',
+        linkedBankAccount: linkedBankAccount ? encrypt(linkedBankAccount) : '',
+        nomineeName: nomineeName ? encrypt(nomineeName) : '',
+        tradingPin: tradingPin ? encrypt(tradingPin) : '',
+        notes: notes ? encrypt(notes) : '',
       }
-  
-      try {
-        await insertDematData( dematId, username, password)
-          .then(() => console.log('Data inserted successfully'))
-          .catch(err => console.error('Insert error', err));;
-        Alert.alert('Success', 'Form submitted and saved successfully!');
-        navigation.navigate('Dashboard')
-  
-        setDematId('');
-        setUserName('');
-        setPassword('');
-      } catch (error) {
-        // console.error('Error inserting data:', error);
-        Alert.alert('Error', 'Failed to save data');
-      }
-    };
-    return (
-      <>
-        <View style={styles.container}>
-          <View style={styles.innerContainer}>
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-              <Text style={styles.headerText}>Demat Account Form</Text>
-              {/* Account Holder Name */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Account ID</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Account ID"
-                  value={dematId}
-                  onChangeText={setDematId}
-                />
-              </View>
-  
-              {/* Email ID */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>User Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="User Name"
-                  value={username}
-                  onChangeText={setUserName}
-                  keyboardType="email-address"
-                />
-              </View>
-  
-              {/* Password */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Password"
-                  value={password}
-                  onChangeText={setPassword}
-                />
-              </View>
-  
-              {/* Submit Button */}
-              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitButtonText}>Submit</Text>
-              </TouchableOpacity>
-            </ScrollView>
-  
+
+      await insertQuery(
+        'demat',
+        encryptData
+      );
+
+      Alert.alert('Success', 'Demat details saved successfully!');
+      navigation.navigate('Dashboard');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save data');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {[
+          { label: 'Broker Name*', value: brokerName, setValue: setBrokerName, placeholder: 'e.g. Zerodha' },
+          { label: 'Demat Account Number*', value: dematAccountNumber, setValue: setDematAccountNumber, placeholder: '1234567890' },
+          { label: 'Depository Name', value: despositoryName, setValue: setDespositoryName, placeholder: 'e.g. CDSL or NSDL' },
+          { label: 'Trading Account Number*', value: tradingAccountNumber, setValue: setTradingAccountNumber, placeholder: 'e.g. TRD00123' },
+          { label: 'Client ID', value: clientId, setValue: setClientId, placeholder: 'e.g. CLT123456' },
+          { label: 'Email', value: email, setValue: setEmail, placeholder: 'example@email.com', keyboardType: 'email-address' },
+          { label: 'Mobile Number', value: mobileNumber, setValue: setMobileNumber, placeholder: '9876543210', keyboardType: 'phone-pad' },
+          { label: 'Account Opening Date', value: accountOpeningDate, setValue: setAccountOpeningDate, placeholder: 'YYYY-MM-DD' },
+          { label: 'Linked Bank Account', value: linkedBankAccount, setValue: setLinkedBankAccount, placeholder: 'e.g. HDFC XXXX1234' },
+          { label: 'Nominee Name', value: nomineeName, setValue: setNomineeName, placeholder: 'Full Name' },
+          { label: 'Trading PIN*', value: tradingPin, setValue: setTradingPin, placeholder: '6-digit PIN', secureTextEntry: true, keyboardType: 'numeric' }
+        ].map((field, index) => (
+          <View style={styles.inputContainer} key={index}>
+            <Text style={styles.label}>{field.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={field.placeholder}
+              value={field.value}
+              onChangeText={field.setValue}
+              secureTextEntry={field.secureTextEntry || false}
+              keyboardType={field.keyboardType || 'default'}
+            />
           </View>
-          <View >
-          </View>
+        ))}
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Notes</Text>
+          <TextInput
+            style={[styles.input, styles.notesInput]}
+            placeholder="Any additional notes..."
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
         </View>
-      </>
-    );
-}
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Save Details</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+};
+
+export default DematScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  innerContainer: {
-    width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    backgroundColor: '#f5f5f5',
+    padding: 20
   },
   scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
+    paddingBottom: 30
   },
   headerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 20,
-    textAlign: 'center',
+    color: '#2c3e50',
+    marginBottom: 25,
+    textAlign: 'center'
   },
   inputContainer: {
-    width: '100%',
-    marginBottom: 20,
+    marginBottom: 20
   },
   label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 5,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#34495e',
+    marginBottom: 8
   },
   input: {
-    width: '100%',
-    height: 50,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 15,
+    borderRadius: 8,
+    padding: 15,
     fontSize: 16,
+    color: '#333',
+    elevation: 1
   },
-  pickerContainer: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    justifyContent: 'center',
-  },
-  picker: {
-    width: '100%',
+  notesInput: {
+    height: 80,
+    textAlignVertical: 'top'
   },
   submitButton: {
-    width: '100%',
-    height: 50,
     backgroundColor: '#2c3e50',
-    borderRadius: 10,
-    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
+    elevation: 2
   },
   submitButtonText: {
+    color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  appBar: {
-    elevation: 4,
-    shadowColor: '#000'
+    fontWeight: 'bold'
   }
 });
-
-export default DeamtScreen;

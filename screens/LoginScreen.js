@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { MaterialIcons } from '@expo/vector-icons'; 
 import Logo from '../components/Logo';
-import { getAllUserData } from '../store/database';
+import { selectQuery } from '../src/controller';
 import AlertBox from '../components/AlertBox';
 
 // Get device dimensions
@@ -29,7 +29,8 @@ const LoginScreen = ({ navigation }) => {
   useEffect(() => {
     const setupDatabase = async () => {
       try {
-        const data = await getAllUserData();
+        const data = await selectQuery('user');
+        console.log(data)
         if (data && data.length > 0) {
           const userData = data[0];
           setUser({
@@ -143,7 +144,7 @@ const LoginScreen = ({ navigation }) => {
         </View>
       </Modal>
 
-      <AlertBox visible={alertVisible} message={alertMessage} onClose={() => setAlertVisible(false)} />
+      {/* <AlertBox visible={alertVisible} message={alertMessage} onClose={() => setAlertVisible(false)} /> */}
     </View>
   );
 };

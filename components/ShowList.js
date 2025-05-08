@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Dimensions, Modal, TouchableOpacity, Share } from 'react-native';
 import { Card, Provider as PaperProvider, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { getFilteredConfig } from '../store/database';
+import { selectQuery } from '../src/controller';
 import CreditCardDetails from './CreditCardDetails';
 import ServiceCardDetails from './ServiceCardDetails';
 
@@ -18,7 +17,8 @@ const subjectIcons = {
   'Demat': 'chart-line',
 };
 
-const ShowList = ({ title, data }) => {
+const ShowList = ({ title, tableKey, data }) => {
+  console.log('ShowList:', title, data, tableKey);
   const [listSetting, setListSetting] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -27,7 +27,14 @@ const ShowList = ({ title, data }) => {
     const initSetting = async () => {
       setLoading(true);
       try {
-        let sync = await getFilteredConfig('title', title);
+        //let sync = await getFilteredConfig('title', title);
+        let sync = await selectQuery('config', {
+          table_key: {
+            value: tableKey,
+            filter: 'equal',
+            dataType: 'text',
+          }
+        }, '*', { orderBy: 'title' });
         if (sync?.length > 0) {
           sync = sync.map(sc => ({
             ...sc,
@@ -44,12 +51,13 @@ const ShowList = ({ title, data }) => {
     initSetting();
   }, [title]);
 
-  const listConfig = listSetting.find(item => item.title === title);
+
+  const listConfig = listSetting.find(item => item.table_key === tableKey);
   if (loading) return <ActivityIndicator size="large" color="#6200ee" style={styles.loading} />;
   if (!listConfig) return <Text style={styles.errorText}>Invalid List Setting</Text>;
 
-  const { mainHeader, showDataHeader, isShare } = listConfig;
-
+  const { mainHeader, showDataHeader, isShare, isVisible } = listConfig;
+  console.log('List Config:', mainHeader);
   const handleShare = async (item) => {
     let shareText = showDataHeader
       .filter(field => field.isVisible === 1)
@@ -77,8 +85,8 @@ const ShowList = ({ title, data }) => {
             <View style={styles.textContainer}>
               {mainHeader.length > 0 && (
                 <>
-                  <Text style={styles.mainText}>{mainHeader[0]?.headerValue}</Text>
-                  <Text style={styles.subText}>{item[mainHeader[0]?.headerKey] || 'N/A'}</Text>
+                  <Text style={styles.mainText}>{item[mainHeader[0]?.headerValue]}</Text>
+                  <Text style={styles.subText}>{item[mainHeader[1]?.headerValue] || 'N/A'}</Text>
                 </>
               )}
             </View>
@@ -92,46 +100,53 @@ const ShowList = ({ title, data }) => {
     <PaperProvider>
       <View style={styles.container}>
         <Text style={styles.header}>{title}</Text>
-        <FlatList
-          data={data}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          showsVerticalScrollIndicator={false}
-        />
 
+        {isVisible === 1 ? (
+          <FlatList
+            data={data}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={renderItem}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12 }}>
+            <MaterialCommunityIcons name="alert-circle" size={20} color="#856404" style={{ marginRight: 8 }} />
+            <Text style={styles.errorText}>Data Showing Restriction !</Text>
+          </View>
+        )}
+
+        {/* Modal for details view */}
         {selectedItem && (
           <Modal visible={!!selectedItem} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              {/* Render components conditionally */}
-              {title === "Card Details" ? (
-                <>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                {title === "Card Details" ? (
                   <CreditCardDetails cardData={selectedItem} />
-                </>
-              ) : (
-                <>
+                ) : (
                   <ServiceCardDetails
                     selectedItem={selectedItem}
                     showDataHeader={showDataHeader}
                     isShare={isShare}
-                    title={ title }
+                    title={title}
                   />
-                </>
-              )}
-        
-             
-            </View>
-             {/* Close Button */}
-             <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedItem(null)}>
+                )}
+              </View>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setSelectedItem(null)}
+              >
                 <MaterialCommunityIcons name="close-circle" size={30} color="white" />
               </TouchableOpacity>
-          </View>
-        </Modal>        
+            </View>
+          </Modal>
         )}
       </View>
     </PaperProvider>
   );
+
 };
 
 const styles = StyleSheet.create({
@@ -232,6 +247,18 @@ const styles = StyleSheet.create({
   modal: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    backgroundColor: '#fff3cd', // soft yellow warning
+    color: '#856404', // dark yellow text
+    padding: 12,
+    borderRadius: 8,
+    textAlign: 'center',
+    marginVertical: 12,
+    borderColor: '#ffeeba',
+    borderWidth: 1,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

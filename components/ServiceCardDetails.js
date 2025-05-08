@@ -1,125 +1,120 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Share } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Share,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, Button } from "react-native-paper";
-import { LinearGradient } from "expo-linear-gradient";
-
-// Function to get random gradient colors
-const getRandomGradient = () => {
-    const gradients = [
-        ["#4B6CB7", "#4B6CB7"], // Blue
-        ["#11998E", "#11998E"], // Green
-        ["#833AB4", "#833AB4"], // Purple-Pink
-    ];
-    return gradients[Math.floor(Math.random() * gradients.length)];
-};
+import { BlurView } from "expo-blur";
 
 const ServiceCardDetails = ({ selectedItem, showDataHeader, isShare, title }) => {
-    const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
-    const [cardColors, setCardColors] = useState(getRandomGradient()); // Store random color for consistency
+  const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
+  if (!selectedItem) return null;
 
-    if (!selectedItem) return null;
+  const toggleSensitiveInfo = () => setShowSensitiveInfo(!showSensitiveInfo);
 
-    // Toggle visibility for sensitive data
-    const toggleSensitiveInfo = () => setShowSensitiveInfo(!showSensitiveInfo);
-
-    // Share Card Details (excluding sensitive info)
-    const handleShare = async () => {
-        try {
-            let shareMessage = "";
-            showDataHeader.forEach((field) => {
-                if (field.isVisible === 1 && field.headerKey !== "password") {
-                    shareMessage += `${field.headerValue}: ${selectedItem[field.headerKey] || "N/A"}\n\n`; // Added spacing
-                }
-            });
-
-            await Share.share({ message: shareMessage });
-        } catch (error) {
-            console.log("Error sharing:", error);
+  const handleShare = async () => {
+    try {
+      let shareMessage = "";
+      showDataHeader?.forEach((field) => {
+        if (field.isVisible === 1 && field.headerKey !== "password") {
+          shareMessage += `${field.headerValue}: ${selectedItem[field.headerKey] || "N/A"}\n`;
         }
-    };
+      });
+      await Share.share({ message: shareMessage });
+    } catch (error) {
+      console.log("Error sharing:", error);
+    }
+  };
 
-    return (
-        <View style={styles.modalOverlay} visible={!!selectedItem}>
-            <View style={styles.modalContainer}>
-                <LinearGradient colors={cardColors} style={styles.card}>
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <Text style={styles.cardTitle}>{title}</Text>
-                        <View style={styles.iconRow}>
-                            <TouchableOpacity onPress={toggleSensitiveInfo} style={styles.iconButton}>
-                                <Ionicons name={showSensitiveInfo ? "eye-off" : "eye"} size={24} color="white" />
-                            </TouchableOpacity>
-                            {isShare === 1 && (
-                            <TouchableOpacity  onPress={handleShare} style={styles.iconButton}>
-                              <Ionicons name="share-social" size={24} color="white" />
-                            </TouchableOpacity>
-                        )}
-                        </View>
-                    </View>
-
-                    {/* Card Details */}
-                    <Card.Content>
-                        {Array.isArray(showDataHeader) &&
-                            showDataHeader.map((field, index) =>
-                                field.isVisible === 1 ? (
-                                    <Text key={index} style={styles.detailText}>
-                                        <Text style={styles.bold}>{field.headerValue} :  </Text>
-                                        <Text style={styles.bold}>{selectedItem?.[field.headerKey] || "N/A"} </Text>
-                                    </Text>
-                                ) : null
-                            )}
-                    </Card.Content>
-                </LinearGradient>
-            </View>
+  return (
+    <View style={styles.wrapper}>
+      {/* Decorative blur container */}
+      <BlurView intensity={100} tint="light" style={styles.cardContainer}>
+        <View style={styles.headerRow}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <View style={styles.actions}>
+            <TouchableOpacity onPress={toggleSensitiveInfo}>
+              <Ionicons name={showSensitiveInfo ? "eye-off" : "eye"} size={22} color="#444" />
+            </TouchableOpacity>
+            {isShare === 1 && (
+              <TouchableOpacity onPress={handleShare} style={{ marginLeft: 14 }}>
+                <Ionicons name="share-social-outline" size={22} color="#444" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-    );
+
+        <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
+          {showDataHeader?.map((field, index) =>
+            field.isVisible === 1 ? (
+              <View key={index} style={styles.fieldRow}>
+                <Text style={styles.label}>{field.headerValue}</Text>
+                <Text style={styles.value}>
+                  {showSensitiveInfo
+                    ? selectedItem[field.headerKey] || "N/A"
+                    : field.headerKey.toLowerCase().includes("password") ||
+                      field.headerKey.toLowerCase().includes("pin")
+                    ? "••••••"
+                    : selectedItem[field.headerKey] || "N/A"}
+                </Text>
+              </View>
+            ) : null
+          )}
+        </ScrollView>
+      </BlurView>
+    </View>
+  );
 };
 
-// Styles
 const styles = StyleSheet.create({
-    modalOverlay: {
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: 50,
-    },
-    modalContainer: {
-        width: "90%",
-        borderRadius: 12,
-        overflow: "hidden",
-    },
-    card: {
-        padding: 20,
-        borderRadius: 12,
-        elevation: 5,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 10,
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "white",
-    },
-    iconRow: {
-        flexDirection: "row",
-        gap: 12,
-    },
-    iconButton: {
-        padding: 6,
-    },
-    detailText: {
-        fontSize: 16,
-        color: "white",
-        marginBottom: 20, // Added space between lines
-    },
-    bold: {
-        fontWeight: "bold",
-        color: "white",
-    },
+  wrapper: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+  cardContainer: {
+    width: "100%",
+    borderRadius: 20,
+    padding: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 1,
+    overflow: "hidden",
+    elevation: 8,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#273746",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fieldRow: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    color: "#273746",
+    marginBottom: 2,
+  },
+  value: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#273746",
+  },
 });
 
 export default ServiceCardDetails;

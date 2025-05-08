@@ -10,11 +10,12 @@ const ITEM_WIDTH = width / 3;
 const CENTER_POSITION = width / 2 - ITEM_WIDTH / 2;
 
 const menuItems = [
-  { id: '1', title: 'Bank Account', icon: 'account-balance', path: 'Bank Account', data: 'Bank_Account' },
+  { id: '1', title: 'Bank Account', icon: 'account-balance', path: 'Bank Account', data: 'bank_account' },
   { id: '2', title: 'Credit Card', icon: 'credit-card', path: 'Card', data: 'Credit_Card_Details', setValue: { cardType: 'Credit Card' } },
   { id: '3', title: 'Debit Card', icon: 'credit-card', path: 'Card', data: 'Debit_Card_Details', setValue: { cardType: 'Debit Card' } },
-  { id: '4', title: 'Net Banking', icon: 'language', path: 'Net Banking', data: 'Net_Banking' },
-  { id: '5', title: 'Demat', icon: 'graphic-eq', path: 'Demat Screen', data: 'Demat' }
+  { id: '4', title: 'Net Banking', icon: 'language', path: 'Net Banking', data: 'net_banking' },
+  { id: '5', title: 'Demat', icon: 'graphic-eq', path: 'Demat Screen', data: 'demat' },
+  { id: '6', title: 'Expense', icon: 'money', path: 'Expense Details', data: 'expense_details' },
 ];
 
 const LOOP_OFFSET = menuItems.length;
@@ -102,7 +103,7 @@ const FinanceScreen = ({ navigation }) => {
     <>
       <CircularMenu navigation={navigation} onSelect={setSelectedMenuItem} />
       <LinearGradient colors={['#fbfcfc', '#fbfcfc']} style={styles.container}>
-        <FinanceListScreen key={selectedMenuItem.data} type={selectedMenuItem.data} />
+        <FinanceListScreen key={selectedMenuItem.data}  titleKey={selectedMenuItem.title} tableKey={selectedMenuItem.data} />
       </LinearGradient>
       <BottomTabNavigator menu={'Finance'} />
     </>

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "LAKSHCRYPT",
-    "slug": "LAKSHCRYPT",
+    "slug": "e-wallets",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
@@ -26,7 +26,8 @@
       "favicon": "./assets/logo.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {

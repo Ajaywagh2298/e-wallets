@@ -1,180 +1,161 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Appbar } from 'react-native-paper';
-import { insertAppAccountData } from '../store/database';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch } from 'react-native';
+import { insertQuery } from '../src/controller';
+import { encrypt } from '../src/utils';
 
 const AppScreen = ({ navigation }) => {
   const [appName, setAppName] = useState('');
   const [username, setUserName] = useState('');
   const [password, setPassword] = useState('');
-  const [securityQA, setSecurityQA] = useState('');
+  const [loginMethod, setLoginMethod] = useState('');
+  const [faEnabled, setFaEnabled] = useState(false);
+  const [securityQuestion, setSecurityQuestion] = useState('');
+  const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
 
   const handleSubmit = async () => {
     if (!appName || !username || !password) {
-      Alert.alert('Error', 'All fields are required');
+      Alert.alert('Validation Error', 'Application Name, Username, and Password are required.');
       return;
     }
 
     try {
-      await insertAppAccountData(appName, username, password, securityQA)
-        .then(() => console.log('Data inserted successfully'))
-        .catch(err => console.error('Insert error', err));
-
-      Alert.alert('Success', 'Form submitted and saved successfully!');
+      let insertData = {
+        appName: appName || '',
+        username: username ? await encrypt(username) : '',
+        password: password ? await encrypt(password) : '',
+        loginMethod,
+        faEnabled: faEnabled ? 1 : 0,
+        securityQuestion: securityQuestion ? await encrypt(securityQuestion) : '',
+        phone: phone ? await encrypt(phone) : '',
+        notes: notes ? await encrypt(notes) : ''
+      }
+      await insertQuery('app_accounts', insertData);
+      Alert.alert('Success', 'Data saved successfully!');
       navigation.navigate('Dashboard');
 
       // Reset fields
       setAppName('');
       setUserName('');
       setPassword('');
-      setSecurityQA('');
+      setLoginMethod('');
+      setFaEnabled(false);
+      setSecurityQuestion('');
+      setPhone('');
+      setNotes('');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save data');
+      console.error('Insert Error:', error);
+      Alert.alert('Error', 'Failed to save data.');
     }
   };
 
   return (
-    <>
-      <View style={styles.container}>
-        <View style={styles.innerContainer}>
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <Text style={styles.headerText}>App</Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <InputField label="Application Name" value={appName} onChangeText={setAppName} />
+        <InputField label="Username" value={username} onChangeText={setUserName} />
+        <InputField label="Password" value={password} onChangeText={setPassword} secureTextEntry />
+        <InputField label="Login Method (e.g., Email, Google, OTP)" value={loginMethod} onChangeText={setLoginMethod} />
 
-            {/* Application Name */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Application Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Application Name"
-                value={appName}
-                onChangeText={setAppName}
-              />
-            </View>
-
-            {/* Username */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>User Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="User Name"
-                value={username}
-                onChangeText={setUserName}
-              />
-            </View>
-
-            {/* Password */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true} // Secure password entry
-              />
-            </View>
-
-            {/* Optional Security Question & Answer */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Optional Info</Text>
-              <TextInput
-                multiline
-                numberOfLines={4}
-                maxLength={200} // Adjusted max length
-                style={styles.inputArea}
-                placeholder="Enter any security Q&A or notes"
-                value={securityQA}
-                onChangeText={setSecurityQA} // Corrected function call
-              />
-            </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>Submit</Text>
-            </TouchableOpacity>
-          </ScrollView>
+        {/* 2FA Toggle */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Two-Factor Authentication Enabled</Text>
+          <Switch value={faEnabled} onValueChange={setFaEnabled} />
         </View>
-      </View>
-    </>
+
+        <InputField label="Security Question / Answer" value={securityQuestion} onChangeText={setSecurityQuestion} />
+        <InputField label="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+
+        <InputField
+          label="Additional Notes"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={4}
+          isTextArea
+        />
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Save</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 };
+
+// Reusable input field
+const InputField = ({ label, value, onChangeText, secureTextEntry, multiline, numberOfLines, keyboardType, isTextArea }) => (
+  <View style={styles.inputContainer}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput
+      style={isTextArea ? styles.inputArea : styles.input}
+      placeholder={label}
+      value={value}
+      onChangeText={onChangeText}
+      secureTextEntry={secureTextEntry}
+      multiline={multiline}
+      numberOfLines={numberOfLines}
+      keyboardType={keyboardType}
+    />
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  innerContainer: {
-    width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    backgroundColor: '#fdfefe',
+    paddingHorizontal: 20,
+    paddingTop: 40,
   },
   scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
+    paddingBottom: 30,
+    backgroundColor: '#fdfefe',
   },
   headerText: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 20,
+    fontWeight: '700',
     textAlign: 'center',
+    marginBottom: 24,
+    color: '#2c3e50',
   },
   inputContainer: {
-    width: '100%',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
-    marginBottom: 5,
+    marginBottom: 6,
+    color: '#34495e',
   },
   input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
+    backgroundColor: '#fdfefe',
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 15,
     fontSize: 16,
   },
   inputArea: {
-    width: '100%',
+    backgroundColor: '#fdfefe',
+    padding: 12,
     height: 100,
-    backgroundColor: '#fff',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 15,
     fontSize: 16,
-    textAlignVertical: 'top', // Ensure text starts from the top
+    textAlignVertical: 'top',
   },
   submitButton: {
-    width: '100%',
-    height: 50,
     backgroundColor: '#2c3e50',
+    paddingVertical: 14,
     borderRadius: 10,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   submitButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#fff',
-  },
-  appBar: {
-    elevation: 4,
-    shadowColor: '#000',
+    fontWeight: 'bold',
   },
 });
 

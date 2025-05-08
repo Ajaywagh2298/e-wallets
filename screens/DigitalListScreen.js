@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { getAllEmailData, getAllAppAccountData, getAllNotePadData, getAllDigitalListData } from '../store/database';
+import { getAllEmailData, getAllAppAccountData, getAllNotePadData, getAllDigitalListData } from '../src/database';
 import ShowList from '../components/ShowList';
 
 const DigitalListScreen = ({ type }) => {

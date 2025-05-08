@@ -1,50 +1,88 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Appbar } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Modal,
+  FlatList,
+  SafeAreaView,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import axios from 'axios';
-import { insertNetBankingData } from '../store/database'; // Database function
+import { selectQuery , insertQuery } from '../src/controller';
+import { encrypt } from '../src/utils';
 
 const NetBankingScreen = ({ navigation }) => {
-  const [accountType, setAccountType] = useState('Bank');
-  const [ifscCode, setIfscCode] = useState('');
   const [bankName, setBankName] = useState('');
-  const [branch, setBranch] = useState('');
-  const [city, setCity] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
-  const [note, setNote] = useState('');
+  const [transactionPin, setTransactionPin] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [accountType, setAccountType] = useState('Bank');
 
-  // Fetch Bank Details using IFSC Code
-  const fetchBankDetails = async () => {
-    if (!ifscCode || ifscCode.length !== 11) {
-      Alert.alert("Invalid IFSC", "Please enter a valid 11-character IFSC code.");
-      return;
-    }
+  const [bankSuggestions, setBankSuggestions] = useState([]);
+  const [showBankSuggestions, setShowBankSuggestions] = useState(false);
 
-    try {
-      const response = await axios.get(`https://ifsc.razorpay.com/${ifscCode}`);
-      if (response.data) {
-        setBankName(response.data.BANK);
-        setBranch(response.data.BRANCH);
-        setCity(response.data.CITY);
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (bankName.length > 1) {
+        const suggestions = await selectQuery('banks', {
+          bank_name: {
+            value: bankName,
+            filter: 'like',
+            dataType: 'text',
+          },
+        });
+
+        const uniqueSuggestions = Array.from(
+          new Map(suggestions.map(item => [item.bank_name, item])).values()
+        );
+        setBankSuggestions(uniqueSuggestions);
+        setShowBankSuggestions(uniqueSuggestions.length > 0);
       } else {
-        Alert.alert("Invalid IFSC", "No bank details found for this IFSC.");
+        setBankSuggestions([]);
+        setShowBankSuggestions(false);
       }
-    } catch (error) {
-      Alert.alert("Error", "Could not fetch bank details. Please check the IFSC code.");
-    }
+    };
+
+    fetchSuggestions();
+  }, [bankName]);
+
+  const selectBank = (bank) => {
+    setBankName(bank);
+    setShowBankSuggestions(false);
   };
 
   const handleSubmit = async () => {
-    if (!bankName || !accountNumber || !userId || !password || !ifscCode || !branch || !city) {
-      Alert.alert('Error', 'All fields are required');
+    if (!bankName || !userName || !password || !transactionPin) {
+      Alert.alert('Error', 'Please fill all required fields');
       return;
     }
 
     try {
-      await insertNetBankingData(accountType, bankName, accountNumber, userId, password, note, ifscCode, branch, city);
+      let insertData = {
+        bankName : bankName,
+        userName : userName ? encrypt(userName) : '',
+        password : password ? encrypt(password) : '',
+        transactionPin : transactionPin ? encrypt(transactionPin) : '',
+        customerId : customerId ? encrypt(customerId) : '',
+        securityQuestion : securityQuestion ? encrypt(securityQuestion) : '',
+        mobileNumber : mobileNumber ? encrypt(mobileNumber) : '',
+        upiId : upiId ? encrypt(upiId) : '',
+        notes : notes ? encrypt(notes) : '',
+        accountType : accountType,
+      }
+      await insertQuery(
+        'net_banking',
+        insertData
+      );
       Alert.alert('Success', 'Net Banking details saved!');
       navigation.goBack();
     } catch (error) {
@@ -53,112 +91,209 @@ const NetBankingScreen = ({ navigation }) => {
   };
 
   return (
-    <>
-      <View style={styles.container}>
-        <View style={styles.innerContainer}>
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <Text style={styles.headerText}>Enter Net Banking Details</Text>
-
-            {/* Account Type Picker */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Account Type</Text>
-              <Picker selectedValue={accountType} onValueChange={setAccountType} style={styles.picker}>
-                <Picker.Item label="Bank" value="Bank" />
-                <Picker.Item label="Credit Card" value="Credit Card" />
-              </Picker>
-            </View>
-
-            {/* IFSC Code Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>IFSC Code</Text>
-              <View style={styles.row}>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="Enter IFSC Code"
-                  value={ifscCode}
-                  onChangeText={setIfscCode}
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* Bank Name with Suggestions */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Bank Name*</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. ICICI Bank"
+            value={bankName}
+            onChangeText={setBankName}
+            onFocus={() => bankName.length > 1 && setShowBankSuggestions(true)}
+          />
+          <Modal
+            visible={showBankSuggestions}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowBankSuggestions(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPressOut={() => setShowBankSuggestions(false)}
+              style={{ flex: 1 }}
+            >
+              <View style={styles.suggestionModal}>
+                <FlatList
+                  data={bankSuggestions}
+                  keyExtractor={(item, index) => item.id?.toString() ?? index.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.suggestionItem}
+                      onPress={() => selectBank(item.bank_name)}
+                    >
+                      <Text style={styles.suggestionText}>{item.bank_name}</Text>
+                    </TouchableOpacity>
+                  )}
                 />
-                <TouchableOpacity style={styles.fetchButton} onPress={fetchBankDetails}>
-                  <Text style={styles.fetchButtonText}>Fetch</Text>
-                </TouchableOpacity>
               </View>
-            </View>
-
-            {/* Auto-filled Bank Details */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Bank Name</Text>
-              <TextInput style={styles.input} placeholder="Bank Name" value={bankName} editable={false} />
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.inputContainer, { flex: 1 }]}>
-                <Text style={styles.label}>Branch</Text>
-                <TextInput style={styles.input} placeholder="Branch" value={branch} editable={false} />
-              </View>
-              <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
-                <Text style={styles.label}>City</Text>
-                <TextInput style={styles.input} placeholder="City" value={city} editable={false} />
-              </View>
-            </View>
-
-            {/* Account Details */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Account Number</Text>
-              <TextInput style={styles.input} placeholder="Enter Account Number" value={accountNumber} onChangeText={setAccountNumber} keyboardType="numeric" />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>User ID</Text>
-              <TextInput style={styles.input} placeholder="Enter User ID" value={userId} onChangeText={setUserId} />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput style={styles.input} placeholder="Enter Password" value={password} onChangeText={setPassword} secureTextEntry />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Note</Text>
-              <TextInput style={styles.input} placeholder="Additional Notes" value={note} onChangeText={setNote} multiline />
-            </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>Save Details</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </Modal>
         </View>
-      </View>
-    </>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Account Type</Text>
+          <Picker selectedValue={accountType} onValueChange={setAccountType} style={styles.picker}>
+            <Picker.Item label="Bank" value="Bank" />
+            <Picker.Item label="Credit Card" value="Credit Card" />
+          </Picker>
+        </View>
+
+        {/* Username */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>User Name*</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter username"
+            value={userName}
+            onChangeText={setUserName}
+          />
+        </View>
+
+        {/* Password */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password*</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Transaction PIN */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Transaction PIN*</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter transaction PIN"
+            value={transactionPin}
+            onChangeText={setTransactionPin}
+            keyboardType="numeric"
+            secureTextEntry
+          />
+        </View>
+
+        {/* Customer ID */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Customer ID</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter customer ID"
+            value={customerId}
+            onChangeText={setCustomerId}
+          />
+        </View>
+
+        {/* Security Question */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Security Question</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Mother's maiden name"
+            value={securityQuestion}
+            onChangeText={setSecurityQuestion}
+          />
+        </View>
+
+        {/* Mobile Number */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Mobile Number</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 9876543210"
+            value={mobileNumber}
+            onChangeText={setMobileNumber}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        {/* UPI ID */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>UPI ID</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. user@bank"
+            value={upiId}
+            onChangeText={setUpiId}
+          />
+        </View>
+
+        {/* Notes */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Notes</Text>
+          <TextInput
+            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            placeholder="Any additional notes"
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
+        </View>
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Save Details</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-  scrollContainer: { flexGrow: 1, alignItems: 'center' },
-  scrollContainer: { flexGrow: 1 },
-  headerText: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  inputContainer: { marginBottom: 12 },
-  label: { fontSize: 16, fontWeight: '600', marginBottom: 5 },
-  input: { width: '100%', height: 48, backgroundColor: '#fff', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  picker: { backgroundColor: '#fff', borderWidth: 1, borderRadius: 8 },
-  fetchButtonText: { color: '#fff', fontWeight: 'bold' },
-  submitButton: { height: 50, backgroundColor: '#2c3e50', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
-  submitButtonText: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  appBar: { elevation: 4 },
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-  scrollContainer: { flexGrow: 1, alignItems: 'center' },
-  headerText: { fontSize: 24, fontWeight: 'bold', color: '#000', marginBottom: 20, textAlign: 'center' },
-  inputContainer: { width: '100%', marginBottom: 20 },
-  label: { fontSize: 16, fontWeight: '500', color: '#000', marginBottom: 5 },
-  input: { width: '100%', height: 50, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 10, paddingHorizontal: 15, fontSize: 16 },
-  fetchButton: { marginTop: 10, backgroundColor: '#3498db', padding: 10, borderRadius: 8, alignItems: 'center', marginLeft : 10 },
-  fetchButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  submitButton: { width: '100%', height: 50, backgroundColor: '#2c3e50', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
-  submitButtonText: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  appBar: { elevation: 4, shadowColor: '#000' },
-  innerContainer: { width: '100%', backgroundColor: '#fff', borderRadius: 15, padding: 20, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 5, top: 30 },
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
+  scrollContainer: { paddingBottom: 30, backgroundColor: '#f5f5f5' },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 25,
+    textAlign: 'center',
+  },
+  inputGroup: { marginBottom: 20, backgroundColor: '#f5f5f5' },
+  label: { fontSize: 14, fontWeight: '600', color: '#34495e', marginBottom: 8 , backgroundColor: '#f5f5f5'},
+  input: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+    elevation: 1,
+  },
+  suggestionModal: {
+    marginTop: 100,
+    marginHorizontal: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    maxHeight: '60%',
+    elevation: 5,
+  },
+  suggestionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  suggestionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  submitButton: {
+    backgroundColor: '#2c3e50',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    elevation: 2,
+  },
+  submitButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });
 
 export default NetBankingScreen;

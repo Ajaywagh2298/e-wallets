@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Share } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { insertOtherData, getAllOtherData } from '../store/database'; // Database function
+import { insertOtherData, getAllOtherData } from '../src/database'; // Database function
 import { MaterialIcons, Feather } from '@expo/vector-icons'; // For icons
 import { LinearGradient } from 'expo-linear-gradient'; // For gradients
 import BottomTabNavigator from '../components/BottomTabNavigator'; // Bottom Tab Navigator

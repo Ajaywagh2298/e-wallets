@@ -4,12 +4,14 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons'; // For fingerprint icon
 import Logo from '../components/Logo';
-import { insertUserData } from '../store/database';
+import { insertQuery } from '../src/controller';
 import AlertBox from '../components/AlertBox';
 
 const SignUpScreen = ({ navigation }) => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
   const [bioMetric, setBioMetric] = useState(false);
@@ -58,16 +60,18 @@ const SignUpScreen = ({ navigation }) => {
   };
 
   const handleNextStep = () => {
-    if (step === 2 && pin.join('').length < 4) {
+    if (step === 4 && pin.join('').length < 4) {
       // Alert.alert('Error', 'Please enter a 4-digit PIN');
       showAlert('error', 'Error', 'Please enter a 4-digit PIN');
       return;
     }
-    if (step === 3 && confirmPin.join('') !== pin.join('')) {
+    if (step === 5 && confirmPin.join('') !== pin.join('')) {
       // Alert.alert('Error', 'Pins do not match');
       showAlert('error', 'Pins do not match');
       return;
     }
+
+    
     setStep(step + 1);
   };
 
@@ -99,9 +103,17 @@ const SignUpScreen = ({ navigation }) => {
     try {
       let pinString = pin.join('');
       console.log(`Creating user: ${name}, ${pinString}, ${bioMetric}`);
-      await insertUserData(name, pinString, bioMetric);
+      await insertQuery('user',{
+        name : name,
+        phone : phone,
+        email : email,
+        pin: pinString,
+        bioMetric: bioMetric ? '1' : '0',
+      });
       showAlert('success', 'User Sign Up Successfully!');
       setName('');
+      setPhone('');
+      setEmail('');
       setPin(['', '', '', '']);
       setConfirmPin(['', '', '', '']);
       setBioMetric(false);
@@ -151,7 +163,7 @@ const SignUpScreen = ({ navigation }) => {
 
         {/* Progress Bar at the Bottom */}
         <View style={styles.progressBarContainer}>
-          {[1, 2, 3, 4].map((s, index) => (
+          {[1, 2, 3, 4, 5, 6].map((s, index) => (
             <View
               key={index}
               style={[
@@ -184,6 +196,38 @@ const SignUpScreen = ({ navigation }) => {
 
         {step === 2 && (
           <>
+            <Text style={styles.label}>Enter Your Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Phone"
+              placeholderTextColor="#999"
+              value={phone}
+              onChangeText={setPhone}
+            />
+            <TouchableOpacity style={styles.nextButton} onPress={handleNextStep}>
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <Text style={styles.label}>Enter Your Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#999"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <TouchableOpacity style={styles.nextButton} onPress={handleNextStep}>
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
             <Text style={styles.label}>Set a 4-digit PIN</Text>
             <View style={styles.pinContainer}>
               {pin.map((digit, index) => (
@@ -204,7 +248,7 @@ const SignUpScreen = ({ navigation }) => {
           </>
         )}
 
-        {step === 3 && (
+        {step === 5 && (
           <>
             <Text style={styles.label}>Confirm Your PIN</Text>
             <View style={styles.pinContainer}>
@@ -226,7 +270,7 @@ const SignUpScreen = ({ navigation }) => {
           </>
         )}
 
-        {step === 4 && (
+        {step === 6 && (
           <>
             <Text style={styles.label}>Enable Biometric Authentication?</Text>
             <TouchableOpacity style={styles.toggleButton} onPress={toggleSwitch}>
@@ -239,7 +283,7 @@ const SignUpScreen = ({ navigation }) => {
             <TouchableOpacity style={styles.nextButton} onPress={handleSignUp}>
               <Text style={styles.nextButtonText}>Sign Up</Text>
             </TouchableOpacity>
-            <AlertBox show={alertVisible} type={alertType} message={alertMessage} onClose={() => setAlertVisible(false)} />
+            {/* <AlertBox show={alertVisible} type={alertType} message={alertMessage} onClose={() => setAlertVisible(false)} /> */}
           </>
         )}
       </View>

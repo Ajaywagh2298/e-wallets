@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Appbar } from 'react-native-paper';
-import { insertNotePadData } from '../store/database'; // Assuming a database function
+import { insertNotePadData } from '../src/database'; // Assuming a database function
 
 const NotesScreen = ({ navigation }) => {
   const [title, setTitle] = useState('');
