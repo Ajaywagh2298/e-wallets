@@ -153,6 +153,8 @@ const tables = {
         dueDate DATE,
         status TEXT,
         reminder INTEGER DEFAULT 0,
+        reminderType TEXT,
+        reminderValue TEXT,
         created_at DATE DEFAULT (datetime('now')),
         updated_at DATE DEFAULT (datetime('now'))`,
     email_details : `
