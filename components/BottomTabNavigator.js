@@ -62,11 +62,12 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
-    width: '96%',
+    width: '94%',
     height: 90,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: '2%',
+    marginLeft: '3%',
+    marginBottom : '5%'
   },
   tabBackground: {
     flexDirection: 'row',
