@@ -11,10 +11,9 @@ const ITEM_WIDTH = width / 3;
 const CENTER_POSITION = width / 2 - ITEM_WIDTH / 2;
 
 const menuItems = [
-  { id: '1', title: 'Email', icon: 'email', path: 'Email', data: 'Email' },
-  { id: '2', title: 'App Details', icon: 'apps', path: 'App', data: 'App_Details' },
-  { id: '3', title: 'NotePad', icon: 'note', path: 'Notes', data: 'NotePad' },
-  { id: '4', title: 'Wi-Fi', icon: 'wifi', path: 'Wifi', data: 'Wi-Fi' },
+  { id: '1', title: 'Email', icon: 'email', path: 'Email', data: 'email_details' },
+  { id: '2', title: 'App Details', icon: 'apps', path: 'App', data: 'app_accounts' },
+  { id: '3', title: 'NotePad', icon: 'note', path: 'Notes', data: 'task' },
 ];
 
 const LOOP_OFFSET = menuItems.length;
@@ -101,8 +100,8 @@ const DigitalScreen = ({ navigation }) => {
   return (
     <>
       <CircularMenu navigation={navigation} onSelect={setSelectedMenuItem} />
-      <LinearGradient colors={['#fbfcfc', '#fbfcfc']} style={styles.container}>
-        <DigitalListScreen key={selectedMenuItem.data} type={selectedMenuItem.data} />
+      <LinearGradient colors={['#f8fafc', '#ffffff']} style={styles.container}>
+        <DigitalListScreen key={selectedMenuItem.data} titleKey={selectedMenuItem.title} tableKey={selectedMenuItem.data} />
       </LinearGradient>
       <BottomTabNavigator menu={'Digital'} />
     </>
@@ -113,12 +112,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    margin: 10,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    margin: 16,
+    borderRadius: 24,
+    shadowColor: '#667eea',
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   circleContainer: {
     height: '28%',

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import SignUpScreen from './screens/SignUpScreen';
@@ -38,7 +39,7 @@ export default function App() {
         await initdbServer();
         setIsDbReady(true);
       } catch (error) {
-        console.error('❌ DB Initialization Error:', error);
+         // console.error('❌ DB Initialization Error:', error);
       }
     };
 
@@ -53,13 +54,22 @@ export default function App() {
 
   if (!isDbReady || !isAppReady) {
     return (
-      <View style={styles.splashContainer}>
+      <LinearGradient
+        colors={['#4A67F0', '#4A67F0']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.splashContainer}
+      >
         <Logo />
         {showGetStarted && (
-            setIsAppReady(true)
+          <TouchableOpacity
+            style={styles.getStartedButton}
+            onPress={() => setIsAppReady(true)}
+          >
+            <Text style={styles.getStartedText}>Get Started</Text>
+          </TouchableOpacity>
         )}
-
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -102,31 +112,48 @@ export default function App() {
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
-    backgroundColor: '#4A67F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   appTitle: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 42,
+    fontWeight: '800',
     color: '#ffffff',
-    marginBottom: 20,
+    marginBottom: 12,
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
   },
   loadingText: {
     fontSize: 18,
-    color: '#ffffff',
-    marginTop: 10,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 20,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
   getStartedButton: {
-    marginTop: 20,
-    backgroundColor: '#3498db',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 25,
+    marginTop: 30,
+    backgroundColor: '#ffffff',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { 
+      width: 0, 
+      height: 4  // Reduced from 8 for more natural shadow
+    },
+    shadowOpacity: 0.2,  // Reduced from 0.3 for subtlety
+    shadowRadius: 8,      // Reduced from 16 for tighter shadow
+    elevation: 8,         // Reduced from 12 for Android
+    alignItems: 'center', // Added for proper text alignment
+    justifyContent: 'center' // Added for vertical centering
   },
   getStartedText: {
     fontSize: 18,
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
+    color: '#000000',
+    fontWeight: '700',
+    letterSpacing: 1,
+    textAlign: 'center'   // Ensures text is centered
+  }
 });

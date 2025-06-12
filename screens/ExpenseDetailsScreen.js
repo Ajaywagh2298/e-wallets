@@ -49,22 +49,27 @@ const ExpenseDetailsScreen = ({ navigation }) => {
                     category: finalCategory,
                     amount: parseInt(amount),
                     paymentMethod: finalPaymentMethod,
-                    monthlyLimit: monthlyLimit ? parseInt(monthlyLimit) : null,
+                    monthlyLimit: monthlyLimit ? parseFloat(monthlyLimit) : 0,
                     notes
                 });
 
-            Alert.alert('Success', 'Expense added!');
-            navigation.goBack();
+            Alert.alert('Success', 'Expense added successfully!', [
+                {
+                    text: 'OK',
+                    onPress: () => {
+                        // Navigate back to dashboard and trigger refresh
+                        navigation.navigate('Dashboard', { refresh: true });
+                    }
+                }
+            ]);
         } catch (err) {
-            console.error('Insert Error:', err);
+             // console.error('Insert Error:', err);
             Alert.alert('Error', 'Failed to save expense');
         }
     };
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Add Expense</Text>
-
             <View style={styles.inputGroup}>
                 <Text style={styles.label}>Date</Text>
                 <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInput}>
@@ -191,7 +196,7 @@ export default ExpenseDetailsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f7f9fb',
+        backgroundColor: '#ffffff',
         padding: 16
     },
     content: {

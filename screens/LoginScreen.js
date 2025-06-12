@@ -30,7 +30,7 @@ const LoginScreen = ({ navigation }) => {
     const setupDatabase = async () => {
       try {
         const data = await selectQuery('user');
-        console.log(data)
+         // console.log(data)
         if (data && data.length > 0) {
           const userData = data[0];
           setUser({

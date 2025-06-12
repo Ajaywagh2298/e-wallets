@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Switch,
+} from 'react-native';
 import { insertQuery } from '../src/controller';
 import { encrypt } from '../src/utils';
 
@@ -20,7 +29,7 @@ const AppScreen = ({ navigation }) => {
     }
 
     try {
-      let insertData = {
+      const insertData = {
         appName: appName || '',
         username: username ? await encrypt(username) : '',
         password: password ? await encrypt(password) : '',
@@ -28,8 +37,9 @@ const AppScreen = ({ navigation }) => {
         faEnabled: faEnabled ? 1 : 0,
         securityQuestion: securityQuestion ? await encrypt(securityQuestion) : '',
         phone: phone ? await encrypt(phone) : '',
-        notes: notes ? await encrypt(notes) : ''
-      }
+        notes: notes ? await encrypt(notes) : '',
+      };
+
       await insertQuery('app_accounts', insertData);
       Alert.alert('Success', 'Data saved successfully!');
       navigation.navigate('Dashboard');
@@ -44,7 +54,7 @@ const AppScreen = ({ navigation }) => {
       setPhone('');
       setNotes('');
     } catch (error) {
-      console.error('Insert Error:', error);
+       // console.error('Insert Error:', error);
       Alert.alert('Error', 'Failed to save data.');
     }
   };
@@ -59,7 +69,7 @@ const AppScreen = ({ navigation }) => {
 
         {/* 2FA Toggle */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Two-Factor Authentication Enabled</Text>
+          <Text style={styles.label}>Two-Factor Authentication</Text>
           <Switch value={faEnabled} onValueChange={setFaEnabled} />
         </View>
 
@@ -75,16 +85,24 @@ const AppScreen = ({ navigation }) => {
           isTextArea
         />
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Save</Text>
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Save</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
 };
 
-// Reusable input field
-const InputField = ({ label, value, onChangeText, secureTextEntry, multiline, numberOfLines, keyboardType, isTextArea }) => (
+const InputField = ({
+  label,
+  value,
+  onChangeText,
+  secureTextEntry,
+  multiline,
+  numberOfLines,
+  keyboardType,
+  isTextArea,
+}) => (
   <View style={styles.inputContainer}>
     <Text style={styles.label}>{label}</Text>
     <TextInput
@@ -103,59 +121,67 @@ const InputField = ({ label, value, onChangeText, secureTextEntry, multiline, nu
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fdfefe',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 20,
     paddingTop: 40,
   },
   scrollContainer: {
     paddingBottom: 30,
-    backgroundColor: '#fdfefe',
   },
-  headerText: {
+  header: {
     fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 24,
+    fontWeight: 'bold',
     color: '#2c3e50',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   inputContainer: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 6,
     color: '#34495e',
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: '#fdfefe',
-    padding: 12,
-    borderRadius: 10,
+    height: 50, // ✅ Height for all inputs
+    backgroundColor: '#fff',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    paddingHorizontal: 16,
     fontSize: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
   },
   inputArea: {
-    backgroundColor: '#fdfefe',
-    padding: 12,
     height: 100,
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    paddingHorizontal: 16,
+    paddingTop: 12,
     fontSize: 16,
     textAlignVertical: 'top',
   },
-  submitButton: {
+  button: {
     backgroundColor: '#2c3e50',
-    paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
+    height: 50,
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
+    marginTop: 24,
+    elevation: 3,
   },
-  submitButtonText: {
+  buttonText: {
     fontSize: 18,
-    color: '#fff',
     fontWeight: 'bold',
+    color: '#fff',
   },
 });
 

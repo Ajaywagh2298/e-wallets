@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { getAllEmailData, getAllAppAccountData, getAllNotePadData, getAllDigitalListData } from '../src/database';
+import { selectQuery } from '../src/controller';
+import { decrypt } from '../src/utils';
 import ShowList from '../components/ShowList';
 
-const DigitalListScreen = ({ type }) => {
-    const [selectedCategory, setSelectedCategory] = useState(type);
+const DigitalListScreen = ({ titleKey, tableKey }) => {
+    const [selectedCategory, setSelectedCategory] = useState(tableKey);
+    const [title, setTitle] = useState(titleKey);
     const [dataList, setDataList] = useState([]);
 
-    console.log('DigitalListScreen:', selectedCategory);
 
     useEffect(() => {
         fetchData(selectedCategory);
@@ -19,14 +20,30 @@ const DigitalListScreen = ({ type }) => {
             let processedCategory = category || 'Email'; // Default fallback
 
             switch (processedCategory) {
-                case 'Email':
-                    data = await getAllEmailData();
+                case 'email_details':
+                    data = await selectQuery('email_details',{},'*',{ orderType : 'companyType'});
+                    data = await Promise.all(data.map( async ( item) => ({
+                        companyName: item.companyName || '',
+                        accountHolderName: item.accountHolderName ? await decrypt(item.accountHolderName) : '',
+                        email: item.emailId ? await decrypt(item.emailId) : '',
+                        password: item.password ? await decrypt(item.password) : ''
+                    })))
                     break;
-                case 'App_Details':
-                    data = await getAllAppAccountData();
+                case 'app_accounts':
+                    data = await selectQuery('app_accounts',{},'*',{ orderType : 'appName'});
+                    data = await Promise.all(data.map( async ( item) => ({
+                        appName: item.appName || '',
+                        username: item.username ? await decrypt(item.username) : '',
+                        password: item.password ? await decrypt(password) : '',
+                        loginMethod : loginMethod || '',
+                        faEnabled: item.faEnabled ? 'Yes' : 'No',
+                        securityQuestion: item.securityQuestion ? await decrypt(item.securityQuestion) : '',
+                        phone: item.phone ? await decrypt(item.phone) : '',
+                        notes: item.notes ? await decrypt(item.notes) : '',
+                    })))
                     break;
-                case 'NotePad':
-                    data = await getAllNotePadData();
+                case 'task':
+                    data = await selectQuery('task');
                     break;
                 default:
                     console.warn(`Unknown category: ${processedCategory}`);
@@ -34,15 +51,15 @@ const DigitalListScreen = ({ type }) => {
 
             setDataList(data || []);
         } catch (error) {
-            console.error(`Failed to load ${category} data:`, error);
+             // console.error(`Failed to load ${category} data:`, error);
         }
     };
 
     return (
         <>
-            {selectedCategory !== 'Wi-Fi' ? (
-                <ShowList title={selectedCategory.replace(/_/g, ' ')} data={dataList} />
-            ) : null}
+                <ShowList title={selectedCategory.replace(/_/g, ' ')} tableKey={selectedCategory}
+                key={selectedCategory}
+                data={dataList} />
         </>
     );
     

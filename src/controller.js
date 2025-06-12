@@ -14,9 +14,9 @@ export const saveLogs = async (message) => {
       `INSERT INTO error_log (log_message) VALUES (?);`,
       [errorMessage]
     );
-    console.log('✅ Error log saved');
+     // console.log('✅ Error log saved');
   } catch (error) {
-    console.error('❌ Error saving logs:', error);
+     // console.error('❌ Error saving logs:', error);
   }
 };
 
@@ -28,15 +28,15 @@ export const insertQuery = async (table, dataObj) => {
     const values = Object.values(dataObj);
 
     const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders});`;
-    console.log('📥 Insert SQL:', sql, values);
+     // console.log('📥 Insert SQL:', sql, values);
 
     const result = database.runSync(sql, values); // No callbacks
-    console.log(`✅ Inserted into ${table}, Result:`, result);
+     // console.log(`✅ Inserted into ${table}, Result:`, result);
 
     return result;
   } catch (error) {
     await saveLogs(error);
-    console.error(`❌ Insert error in ${table}:`, error);
+     // console.error(`❌ Insert error in ${table}:`, error);
     return null;
   }
 };
@@ -48,11 +48,11 @@ export const updateQuery = async (table, updateModel, filterModel = {}) => {
     const { clause: whereClause, values: whereValues } = buildWhereClause(filterModel);
     const sql = `UPDATE ${table} SET ${updateClause} ${whereClause}`.trim() + ';';
 
-    await database.runAsync(sql, [...updateValues, ...whereValues]);
-    console.log(`✅ Updated ${table}`);
+     await database.runAsync(sql, [...updateValues, ...whereValues]);
+      console.log(`✅ Updated ${table}`);
   } catch (error) {
     await saveLogs(error);
-    console.error(`❌ Update error in ${table}:`, error);
+     // console.error(`❌ Update error in ${table}:`, error);
   }
 };
 
@@ -63,10 +63,10 @@ export const deleteQuery = async (table, filterModel = {}) => {
     const sql = `DELETE FROM ${table} ${clause}`.trim() + ';';
 
     await database.runAsync(sql, values);
-    console.log(`✅ Deleted from ${table}`);
+     // console.log(`✅ Deleted from ${table}`);
   } catch (error) {
     await saveLogs(error);
-    console.error(`❌ Delete error in ${table}:`, error);
+     // console.error(`❌ Delete error in ${table}:`, error);
   }
 };
 
@@ -87,8 +87,21 @@ export const selectQuery = async (
     return result || [];
   } catch (error) {
     await saveLogs(error);
-    console.error(`❌ Select error in ${table}:`, error);
+     // console.error(`❌ Select error in ${table}:`, error);
     return [];
+  }
+};
+
+// EXECUTE QUERY - Generic query execution function
+export const executeQuery = async (sql, params = []) => {
+  try {
+    const result = await database.getAllAsync(sql, params);
+     // console.log('✅ Query executed successfully' , result);
+    return result || [];
+  } catch (error) {
+    await saveLogs(error);
+     // console.error('❌ Execute query error:', error);
+    throw error;
   }
 };
 
@@ -100,25 +113,31 @@ export const login = async (name, pin) => {
       `SELECT * FROM User WHERE name = ? AND pin = ?;`,
       [name, pin]
     );
-    console.log('✅ Login Success:', results);
+     // console.log('✅ Login Success:', results);
     return results;
   } catch (error) {
-    console.error('❌ Error in login:', error);
+     // console.error('❌ Error in login:', error);
     return null;
   }
 };
 
-export const monthlyExpense = async (month, year) => {
+export const monthlyExpense = async (year , month) => {
 
   try {
+
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+
+    const where = `WHERE date BETWEEN '${startDate}' AND '${endDate}'`;
+
     const results = await database.getAllAsync(
-      `SELECT * FROM expense_details WHERE date BETWEEN ${new Date(year, month - 1, 1).getTime()} AND ${new Date(year, month, 0).getTime()};`,
+      `SELECT * FROM expense_details ${where} ;`,
       [month, year]
     );
-    console.log('✅ Monthly Expenses:', results);
+     // console.log('✅ Monthly Expenses:', results);
     return results || [];
   } catch (error) {
-    console.error('❌ Error in monthlyExpses:', error);
+     // console.error('❌ Error in monthlyExpses:', error);
     return null;
   }
 }

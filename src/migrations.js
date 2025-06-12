@@ -19,12 +19,12 @@ export const runMigrations = async () => {
         if (migration.version > currentVersion) {
           await runQuery(migration.query);
           await setCurrentVersion(migration.version);
-          console.log(`✅ Applied migration version ${migration.version}`);
+           // console.log(`✅ Applied migration version ${migration.version}`);
         }
       }
     } catch (err) {
       await saveLogs(`Migration Error: ${err.message || err}`);
-      console.error(`❌ Migration Error:`, err);
+       // console.error(`❌ Migration Error:`, err);
     }
   };
   
@@ -40,7 +40,7 @@ export const runMigrations = async () => {
         return 0;
       }
       await saveLogs(`getCurrentVersion Error: ${error.message || error}`);
-      console.error(`❌ getCurrentVersion Error:`, error);
+       // console.error(`❌ getCurrentVersion Error:`, error);
       return 0;
     }
   };

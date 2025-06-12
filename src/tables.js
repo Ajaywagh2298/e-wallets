@@ -170,6 +170,7 @@ const tables = {
         fileName TEXT,
         file_type TEXT,
         file_size TEXT,
+        file_path TEXT,
         high_security INTEGER DEFAULT 0,
         accesslock INTEGER DEFAULT 0,
         autodelete INTEGER DEFAULT 0,
@@ -205,15 +206,15 @@ export const initializeTables = () => {
           sql,
           [],
           () => {
-            console.log(`✅ Table ${table} created successfully`);
+             // console.log(`✅ Table ${table} created successfully`);
           },
           (error) => {
-            console.error(`❌ Error creating table ${table}:`, error);
+             // console.error(`❌ Error creating table ${table}:`, error);
           }
         );
       }
     } catch (error) {
-      console.error('❌ Error initializing tables:', error);
+       // console.error('❌ Error initializing tables:', error);
     }
   };
   

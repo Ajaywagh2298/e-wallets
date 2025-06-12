@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
-import { insertQuery } from '../src/controller'; 
-import { encrypt } from '../src/utils'; 
+import { insertQuery } from '../src/controller';
+import { encrypt } from '../src/utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AntDesign } from '@expo/vector-icons';
 
@@ -59,20 +59,20 @@ const BankAccountScreen = ({ navigation }) => {
 
     try {
       let dataObj = {
-        accountNumber : accountNumber ? await encrypt(accountNumber) : '',
-        accountHolderName : accountHolderName ? await encrypt(accountHolderName) : '',
-        accountType : accountType ? accountType : '',
-        bankName : bankName,
-        branch : branch ,
-        branchAddress : branchAddress,
-        city : city,
-        ifscCode : ifscCode ? await encrypt(ifscCode) : '',
-        cifCode : cifCode ? await encrypt(cifCode) : '',
-        micrCode : micrCode ? await encrypt(micrCode) : '',
-        mobileNumber : mobileNumber ? await encrypt(mobileNumber) : '', 
-        nomineeName : nomineeName ? await encrypt(nomineeName) : '',
-        upiId : upiId ? await encrypt(upiId) : '',
-        notes : notes ? await encrypt(notes) : '',
+        accountNumber: accountNumber ? await encrypt(accountNumber) : '',
+        accountHolderName: accountHolderName ? await encrypt(accountHolderName) : '',
+        accountType: accountType ? accountType : '',
+        bankName: bankName,
+        branch: branch,
+        branchAddress: branchAddress,
+        city: city,
+        ifscCode: ifscCode ? await encrypt(ifscCode) : '',
+        cifCode: cifCode ? await encrypt(cifCode) : '',
+        micrCode: micrCode ? await encrypt(micrCode) : '',
+        mobileNumber: mobileNumber ? await encrypt(mobileNumber) : '',
+        nomineeName: nomineeName ? await encrypt(nomineeName) : '',
+        upiId: upiId ? await encrypt(upiId) : '',
+        notes: notes ? await encrypt(notes) : '',
       }
 
       await insertQuery('bank_account', dataObj);
@@ -159,7 +159,7 @@ const BankAccountScreen = ({ navigation }) => {
               <Picker
                 selectedValue={accountType}
                 onValueChange={(itemValue) => setAccountType(itemValue)}
-                style={styles.input}
+                style={[styles.input, { paddingVertical: 10 }]}
               >
                 <Picker.Item label="Select Account Type" value="" />
                 <Picker.Item label="Savings" value="savings" />
@@ -187,7 +187,7 @@ const BankAccountScreen = ({ navigation }) => {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Link Mobile Number</Text>
-              <TextInput style={styles.input} value={mobileNumber}   onChangeText={setMobileNumber}/>
+              <TextInput style={styles.input} value={mobileNumber} onChangeText={setMobileNumber} />
             </View>
 
             {/* City Name (Auto-filled) */}
@@ -198,18 +198,18 @@ const BankAccountScreen = ({ navigation }) => {
 
             {/* Toggle Button */}
             <TouchableOpacity activeOpacity={0.9} onPress={toggleMoreFields} style={styles.buttonWrapper}>
-  <LinearGradient
-    colors={['#74ebd5', '#ACB6E5']} // cool blue gradient
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 0 }}
-    style={styles.showMoreButton}
-  >
-    <AntDesign name={showMore ? 'up' : 'down'} size={18} color="#fff" style={{ marginRight: 8 }} />
-    <Text style={styles.showMoreButtonText}>
-      {showMore ? 'Hide Extra Fields' : 'Show More Fields'}
-    </Text>
-  </LinearGradient>
-</TouchableOpacity>
+              <LinearGradient
+                colors={['#2c3e50', '#2c3e50']} // cool blue gradient
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.showMoreButton}
+              >
+                <AntDesign name={showMore ? 'up' : 'down'} size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.showMoreButtonText}>
+                  {showMore ? 'Hide Extra Fields' : 'Show More Fields'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
             {showMore && (
               <>
@@ -224,19 +224,19 @@ const BankAccountScreen = ({ navigation }) => {
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>MICR Number</Text>
-                  <TextInput style={styles.input} value={micrCode} editable={true}   onChangeText={setMicrCode}/>
+                  <TextInput style={styles.input} value={micrCode} editable={true} onChangeText={setMicrCode} />
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Nominee Name</Text>
-                  <TextInput style={styles.input} value={nomineeName} editable={true}  onChangeText={setNomineeName}/>
+                  <TextInput style={styles.input} value={nomineeName} editable={true} onChangeText={setNomineeName} />
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>UPI ID</Text>
-                  <TextInput style={styles.input} value={upiId} editable={true}  onChangeText={setUpiId}/>
+                  <TextInput style={styles.input} value={upiId} editable={true} onChangeText={setUpiId} />
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Addition Info.</Text>
-                  <TextInput style={styles.input} value={notes} editable={true}  onChangeText={setNotes}/>
+                  <TextInput style={styles.input} value={notes} editable={true} onChangeText={setNotes} />
                 </View>
               </>
             )}
@@ -260,86 +260,52 @@ const BankAccountScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 2,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 15,
+    paddingTop: 30,
   },
   scrollContainer: {
     flexGrow: 1,
-    alignItems: 'center',
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  inputContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 5,
-  },
-  input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-  },
-  submitButton: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#2c3e50',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 5,
-    marginBottom: 20,
-  },
-  submitButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  appBar: {
-    elevation: 4,
-    shadowColor: '#000',
   },
   innerContainer: {
-    width: '100%',
     backgroundColor: '#fff',
-    borderRadius: 15,
+    borderRadius: 20,
     padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    top: 30
-  },
-  buttonWrapper: {
-    marginTop: 10,
     marginBottom: 20,
-    alignItems: 'center',
-    alignSelf: 'center',
-    borderRadius: 30,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
   },
-  
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 5,
+    color: '#333',
+  },
+  input: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dcdcdc',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    height: 48,
+    fontSize: 16,
+    color: '#111',
+  },
+  submitButton: {
+    backgroundColor: '#2c3e50',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
   showMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -347,13 +313,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 30,
+    marginTop: 10,
+    backgroundColor: '#2c3e50',
   },
-  
   showMoreButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
+  buttonWrapper: {
+    alignItems: 'center',
+  },
 });
+
 
 export default BankAccountScreen;

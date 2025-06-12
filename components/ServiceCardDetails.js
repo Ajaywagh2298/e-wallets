@@ -7,8 +7,8 @@ import {
   Share,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 const ServiceCardDetails = ({ selectedItem, showDataHeader, isShare, title }) => {
   const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
@@ -26,48 +26,79 @@ const ServiceCardDetails = ({ selectedItem, showDataHeader, isShare, title }) =>
       });
       await Share.share({ message: shareMessage });
     } catch (error) {
-      console.log("Error sharing:", error);
+       // console.log("Error sharing:", error);
     }
   };
 
   return (
     <View style={styles.wrapper}>
-      {/* Decorative blur container */}
-      <BlurView intensity={100} tint="light" style={styles.cardContainer}>
-        <View style={styles.headerRow}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <View style={styles.actions}>
-            <TouchableOpacity onPress={toggleSensitiveInfo}>
-              <Ionicons name={showSensitiveInfo ? "eye-off" : "eye"} size={22} color="#444" />
-            </TouchableOpacity>
-            {isShare === 1 && (
-              <TouchableOpacity onPress={handleShare} style={{ marginLeft: 14 }}>
-                <Ionicons name="share-social-outline" size={22} color="#444" />
+      <View style={styles.cardContainer}>
+        <LinearGradient
+          colors={['#4285F4', '#6366F1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <MaterialIcons name="account-circle" size={24} color="white" />
+              <Text style={styles.cardTitle}>{title}</Text>
+            </View>
+            <View style={styles.actions}>
+              <TouchableOpacity onPress={toggleSensitiveInfo} style={styles.actionButton}>
+                <Ionicons name={showSensitiveInfo ? "eye-off" : "eye"} size={20} color="white" />
               </TouchableOpacity>
-            )}
+              {isShare === 1 && (
+                <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
+                  <Ionicons name="share-social" size={20} color="white" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
+        </LinearGradient>
 
-        <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
+        <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
           {showDataHeader?.map((field, index) =>
             field.isVisible === 1 ? (
-              <View key={index} style={styles.fieldRow}>
-                <Text style={styles.label}>{field.headerValue}</Text>
-                <Text style={styles.value}>
-                  {showSensitiveInfo
-                    ? selectedItem[field.headerKey] || "N/A"
-                    : field.headerKey.toLowerCase().includes("password") ||
-                      field.headerKey.toLowerCase().includes("pin")
-                    ? "••••••"
-                    : selectedItem[field.headerKey] || "N/A"}
-                </Text>
+              <View key={index}>
+                <View style={styles.fieldHeader}>
+                  <MaterialIcons
+                    name={getFieldIcon(field.headerKey)}
+                    size={18}
+                    color="#4285F4"
+                  />
+                  <Text style={styles.label}>{field.headerValue}</Text>
+                </View>
+                <View style={styles.valueContainer}>
+                  <Text style={styles.value}>
+                    {showSensitiveInfo
+                      ? selectedItem[field.headerKey] || "N/A"
+                      : field.headerKey.toLowerCase().includes("password") ||
+                        field.headerKey.toLowerCase().includes("pin")
+                      ? "••••••••"
+                      : selectedItem[field.headerKey] || "N/A"}
+                  </Text>
+                </View>
               </View>
             ) : null
           )}
         </ScrollView>
-      </BlurView>
+      </View>
     </View>
   );
+};
+
+// Helper function to get appropriate icon for field
+const getFieldIcon = (fieldKey) => {
+  const key = fieldKey.toLowerCase();
+  if (key.includes('email')) return 'email';
+  if (key.includes('password') || key.includes('pin')) return 'lock';
+  if (key.includes('phone') || key.includes('mobile')) return 'phone';
+  if (key.includes('account') || key.includes('number')) return 'account-balance';
+  if (key.includes('name') || key.includes('user')) return 'person';
+  if (key.includes('bank')) return 'account-balance-wallet';
+  if (key.includes('url') || key.includes('website')) return 'language';
+  return 'info';
 };
 
 const styles = StyleSheet.create({
@@ -79,41 +110,80 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: "100%",
+    backgroundColor: "white",
     borderRadius: 20,
-    padding: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderColor: "rgba(255,255,255,0.3)",
-    borderWidth: 1,
     overflow: "hidden",
-    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  headerGradient: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
   cardTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#273746",
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
+    marginLeft: 12,
   },
   actions: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  contentArea: {
+    maxHeight: 400,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   fieldRow: {
-    marginBottom: 12,
+    marginBottom: 16,
+    padding: 16,
+  },
+  fieldHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   label: {
     fontSize: 14,
-    color: "#273746",
-    marginBottom: 2,
+    fontWeight: "600",
+    color: "#4285F4",
+    marginLeft: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  valueContainer: {
+    backgroundColor: "white",
+    padding: 12,
   },
   value: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#273746",
+    color: "#333",
+    lineHeight: 22,
+    marginLeft : '5%'
   },
 });
 

@@ -122,7 +122,7 @@ const CreditCardScreen = ({ route, navigation }) => {
       Alert.alert('Success', `${cardType} details saved!`);
       navigation.goBack();
     } catch (error) {
-      console.error(error);
+       // console.error(error);
       Alert.alert('Error', `Failed to save ${cardType} details`);
     }
   };
@@ -323,7 +323,7 @@ const CreditCardScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
     padding: 20,
   },
   scrollContainer: {

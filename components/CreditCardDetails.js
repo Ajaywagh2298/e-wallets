@@ -14,19 +14,22 @@ const { width } = Dimensions.get("window");
 
 const getRandomColor = () => {
   const colors = [
-    ["#4B6CB7", "#182848"], // Blue (matches the Email card)
-    ["#11998E", "#38EF7D"], // Green (matches the Net Banking card)
-    ["#833AB4", "#C13584"], // Purple-Pink (matches the App Details card)
+    ["#4285F4", "#6366F1"], // Google Blue gradient (matches dashboard)
+    ["#34A853", "#4CAF50"], // Green gradient
+    ["#9C27B0", "#E91E63"], // Purple-Pink gradient
+    ["#FF9800", "#FF5722"], // Orange-Red gradient
+    ["#00BCD4", "#009688"], // Cyan-Teal gradient
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
 const getRandomChipColor = () => {
   const chipColors = [
-    "#F4A261", // Orange
-    "#E76F51", // Reddish
-    "#2A9D8F", // Teal
-    "#E9C46A", // Golden Yellow
+    "#FBBC04", // Google Yellow (matches dashboard)
+    "#EA4335", // Google Red
+    "#34A853", // Google Green
+    "#FF9800", // Orange
+    "#9C27B0", // Purple
   ];
   return chipColors[Math.floor(Math.random() * chipColors.length)];
 };
@@ -53,7 +56,7 @@ const CreditCardDetails = ({ cardData, onClose }) => {
         message: `Bank: ${cardData.bankName}\nCard Number: ${maskCardNumber(cardData.cardNumber)}\nValid Thru: ${cardData.validDate}\nCard Holder: ${cardData.cardHolderName}`,
       });
     } catch (error) {
-      console.log("Error sharing:", error);
+       // console.log("Error sharing:", error);
     }
   };
 

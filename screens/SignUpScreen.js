@@ -102,7 +102,7 @@ const SignUpScreen = ({ navigation }) => {
 
     try {
       let pinString = pin.join('');
-      console.log(`Creating user: ${name}, ${pinString}, ${bioMetric}`);
+       // console.log(`Creating user: ${name}, ${pinString}, ${bioMetric}`);
       await insertQuery('user',{
         name : name,
         phone : phone,
@@ -119,7 +119,7 @@ const SignUpScreen = ({ navigation }) => {
       setBioMetric(false);
       setTimeout(() => navigation.navigate('Login'), 1000);
     } catch (err) {
-      console.log(`Error in user creation: ${err}`);
+       // console.log(`Error in user creation: ${err}`);
       showAlert('error', 'Something went wrong. Please try again.');
     }
   };

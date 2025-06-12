@@ -57,7 +57,7 @@ export const BankList = async () => {
     try {
         let existData = await selectQuery('banks', {}, '*');
         if (existData.length > 0) {
-            console.log('Bank data already exists in the database.');
+             // console.log('Bank data already exists in the database.');
             return;
         }
         for (let i = 0; i < data.length; i++) {
@@ -68,6 +68,6 @@ export const BankList = async () => {
             const result = await insertQuery('banks', bank);
         }
     } catch (error) {
-        console.error('Error inserting banks:', error);
+         // console.error('Error inserting banks:', error);
     }
 }

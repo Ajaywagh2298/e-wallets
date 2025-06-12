@@ -242,8 +242,8 @@ const NetBankingScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
-  scrollContainer: { paddingBottom: 30, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: '#ffffff', padding: 20 },
+  scrollContainer: { paddingBottom: 30, backgroundColor: '#ffffff' },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -251,10 +251,10 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     textAlign: 'center',
   },
-  inputGroup: { marginBottom: 20, backgroundColor: '#f5f5f5' },
-  label: { fontSize: 14, fontWeight: '600', color: '#34495e', marginBottom: 8 , backgroundColor: '#f5f5f5'},
+  inputGroup: { marginBottom: 20, backgroundColor: '#ffffff' , marginTop : 20},
+  label: { fontSize: 14, fontWeight: '600', color: '#34495e', marginBottom: 8 , backgroundColor: '#ffffff'},
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,

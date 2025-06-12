@@ -1,240 +1,1334 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Modal, TouchableOpacity  , ProgressBarAndroid } from "react-native";
-import { Appbar } from 'react-native-paper';
-import { Checkbox, Button, Card, Divider, IconButton } from "react-native-paper";
-import { ProgressBar } from "react-native-paper";
-import { Picker } from "@react-native-picker/picker";
-import { getAllConfig, updateConfig , importDatabase, exportDatabase} from "../src/database";
-import { reloadAppAsync } from "expo";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Modal,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  TextInput,
+} from "react-native";
+import { ProgressBar, Avatar } from "react-native-paper";
+import { LinearGradient } from 'expo-linear-gradient';
+import { selectQuery, updateQuery, executeQuery } from "../src/controller";
 import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Sharing from 'expo-sharing';
 import * as Crypto from 'expo-crypto';
+import { MaterialIcons } from '@expo/vector-icons';
+import axios from 'axios';
+import { Picker } from '@react-native-picker/picker'; 
 
 const SettingsScreen = ({ navigation }) => {
   const [configs, setConfigs] = useState([]);
   const [selectedConfig, setSelectedConfig] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+     type: '',
+    subject: '',
+    message: '',
+  });
+  const [userData, setUserData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
+
+  // Helper function to safely parse JSON
+  const safeJsonParse = (jsonString, fallback = []) => {
+    if (!jsonString) return fallback;
+    try {
+      const parsed = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+      return Array.isArray(parsed) ? parsed : fallback;
+    } catch (e) {
+      console.error('JSON Parse Error:', e);
+      return fallback;
+    }
+  };
+
+  // Helper function to convert database boolean values
+  const convertDbBoolean = (value) => {
+    return value === 1 || value === '1' || value === true;
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch configs
+      let configData = await selectQuery('config', {}, '*', { orderBy: 'title' });
+      if (configData?.length > 0) {
+        configData = configData.map(config => {
+          console.log('Raw config from DB:', config); // Debug log
+          
+          const processedConfig = {
+            ...config,
+            // Parse JSON strings safely
+            mainHeader: safeJsonParse(config.mainHeader, []),
+            showDataHeader: safeJsonParse(config.showDataHeader, []),
+            // Convert database boolean values (1/0) to actual booleans
+            isShare: convertDbBoolean(config.isShare),
+            isVisible: convertDbBoolean(config.isVisible)
+          };
+          
+          console.log('Processed config:', processedConfig); // Debug log
+          return processedConfig;
+        });
+        setConfigs(configData);
+      } else {
+        setConfigs([]);
+      }
+      
+      // Fetch user data
+      const userData = await selectQuery('user', {}, '*');
+      if (userData?.length > 0) {
+        setUserData({
+          name: userData[0].name || '@appsinppuser',
+          email: userData[0].email || 'developer@appsnipp.com',
+          phone: userData[0].phone || '+91 8129999999'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      Alert.alert('Error', 'Failed to load data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchConfigs = async () => {
-      const data = await getAllConfig();
-      if (data?.length > 0) {
-        setConfigs(data);
-      }
-    };
-    fetchConfigs();
+    fetchData();
   }, []);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
   const handleEdit = (config) => {
-    setSelectedConfig({
-      ...config,
-      mainHeader: JSON.parse(config.mainHeader),
-      showDataHeader: JSON.parse(config.showDataHeader),
-    });
-    setModalVisible(true);
+    try {
+      console.log('Editing config:', config); // Debug log
+      
+      const processedConfig = {
+        ...config,
+        // Ensure arrays are properly handled
+        mainHeader: Array.isArray(config.mainHeader) ? config.mainHeader : [],
+        showDataHeader: Array.isArray(config.showDataHeader) ? config.showDataHeader : [],
+        // Ensure booleans are properly handled
+        isShare: convertDbBoolean(config.isShare),
+        isVisible: convertDbBoolean(config.isVisible)
+      };
+      
+      console.log('Setting selected config:', processedConfig); // Debug log
+      setSelectedConfig(processedConfig);
+      setModalVisible(true);
+    } catch (error) {
+      console.error('Error processing config for edit:', error);
+      Alert.alert('Error', 'Failed to load configuration data.');
+    }
   };
 
   const handleToggle = (key) => {
-    setSelectedConfig((prevConfig) => ({
-      ...prevConfig,
-      [key]: prevConfig[key] ? 0 : 1,
-    }));
-  };
-
-  const handleHeaderChange = (value) => {
-    setSelectedConfig((prevConfig) => ({
-      ...prevConfig,
-      mainHeader: [
-        {
-          headerKey: value,
-          headerValue:
-            prevConfig.showDataHeader.find((h) => h.headerKey === value)?.headerValue || "",
-        },
-      ],
-    }));
+    setSelectedConfig((prevConfig) => {
+      const newValue = !prevConfig[key];
+      console.log(`Toggling ${key} from ${prevConfig[key]} to ${newValue}`); // Debug log
+      return {
+        ...prevConfig,
+        [key]: newValue,
+      };
+    });
   };
 
   const handleUpdate = async () => {
     if (selectedConfig) {
-      const updatedConfig = {
-        ...selectedConfig,
-        mainHeader: JSON.stringify(selectedConfig.mainHeader),
-        showDataHeader: JSON.stringify(selectedConfig.showDataHeader),
-      };
-      console.log(updatedConfig)
-      await updateConfig(updatedConfig);
-      setConfigs((prevConfigs) =>
-        prevConfigs.map((config) =>
-          config.id === updatedConfig.id ? updatedConfig : config
-        )
-      );
-      setModalVisible(false);
-      reloadAppAsync()
+      try {
+        console.log('Updating config:', selectedConfig); // Debug log
+        
+        const updatedConfig = {
+          ...selectedConfig,
+          // Convert arrays back to JSON strings for database storage
+          mainHeader: JSON.stringify(selectedConfig.mainHeader || []),
+          showDataHeader: JSON.stringify(selectedConfig.showDataHeader || []),
+          // Convert booleans to database format (1/0)
+          isShare: selectedConfig.isShare ? 1 : 0,
+          isVisible: selectedConfig.isVisible ? 1 : 0,
+        };
+        
+        console.log('Config being sent to database:', updatedConfig); // Debug log
+        
+        await updateQuery('config', updatedConfig, { uid: updatedConfig.uid });
+        
+        // Update local state with the processed version
+        const updatedConfigForState = {
+          ...selectedConfig,
+          isShare: convertDbBoolean(updatedConfig.isShare),
+          isVisible: convertDbBoolean(updatedConfig.isVisible)
+        };
+        
+        setConfigs((prevConfigs) =>
+          prevConfigs.map((config) =>
+            config.uid === updatedConfig.uid ? updatedConfigForState : config
+          )
+        );
+        
+        setModalVisible(false);
+        Alert.alert('Success', 'Configuration updated successfully!');
+      } catch (error) {
+        console.error('Update error:', error);
+        Alert.alert('Error', 'Failed to update configuration');
+      }
     }
   };
-  const encryptFile = async (fileUri) => {
-    const content = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-    const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, content);
-    const encryptedPath = `${FileSystem.documentDirectory}encrypted_db.sqlite`;
-    await FileSystem.writeAsStringAsync(encryptedPath, hash, { encoding: FileSystem.EncodingType.Base64 });
-    return encryptedPath;
+
+  // Handle data header visibility toggle
+  const handleDataHeaderToggle = (headerKey) => {
+    setSelectedConfig((prevConfig) => ({
+      ...prevConfig,
+      showDataHeader: prevConfig.showDataHeader.map((header) =>
+        header.headerKey === headerKey
+          ? { ...header, isVisible: header.isVisible ? 0 : 1 }
+          : header
+      ),
+    }));
+  };
+
+  const exportDatabase = async () => {
+    try {
+      const tablesQuery = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('user', 'migrations', 'sqlite_sequence')";
+      const tables = await executeQuery(tablesQuery);
+      
+      let exportData = {};
+      
+      for (const table of tables) {
+        const tableName = table.name;
+        const tableData = await selectQuery(tableName, {}, '*');
+        exportData[tableName] = tableData;
+      }
+      
+      const jsonData = JSON.stringify(exportData);
+      const encryptedData = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        jsonData
+      );
+      
+      const timestamp = new Date().getTime();
+      const secureFilePath = `${FileSystem.documentDirectory}lakshcrypt_backup_${timestamp}.lcrypt`;
+      
+      const fileHeader = "LAKSHCRYPT_SECURE_BACKUP_V1";
+      const fileContent = fileHeader + "|" + encryptedData + "|" + jsonData;
+      
+      await FileSystem.writeAsStringAsync(secureFilePath, fileContent);
+      
+      return secureFilePath;
+    } catch (error) {
+      console.error('Export error:', error);
+      throw error;
+    }
+  };
+
+  const importDatabase = async (fileUri) => {
+    try {
+      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      
+      if (!fileContent.startsWith("LAKSHCRYPT_SECURE_BACKUP_V1|")) {
+        throw new Error("Invalid backup file format");
+      }
+      
+      const parts = fileContent.split("|");
+      if (parts.length !== 3) {
+        throw new Error("Corrupted backup file");
+      }
+      
+      const [, checksum, jsonData] = parts;
+      
+      const calculatedChecksum = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        jsonData
+      );
+      
+      if (checksum !== calculatedChecksum) {
+        throw new Error("Backup file integrity check failed");
+      }
+      
+      const importData = JSON.parse(jsonData);
+      
+      for (const [tableName, tableData] of Object.entries(importData)) {
+        await executeQuery(`DELETE FROM ${tableName}`);
+        
+        for (const record of tableData) {
+          const { uid, ...recordWithoutUid } = record;
+          await updateQuery(tableName, recordWithoutUid, { uid });
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Import error:', error);
+      throw error;
+    }
   };
 
   const handleExport = async () => {
-    setProgress(0.1);
-    const dbPath = await exportDatabase();
-    setProgress(0.5);
-    const encryptedPath = await encryptFile(dbPath);
-    setProgress(1);
-    alert(`Database exported and encrypted at: ${encryptedPath}`);
+    try {
+      setIsExporting(true);
+      setProgress(0.1);
+
+      const secureFilePath = await exportDatabase();
+      setProgress(0.8);
+
+      const isAvailable = await Sharing.isAvailableAsync();
+
+      if (isAvailable) {
+        await Sharing.shareAsync(secureFilePath, {
+          mimeType: 'application/octet-stream',
+          dialogTitle: 'Save LAKSHCRYPT Backup File',
+          UTI: 'public.data'
+        });
+      } else {
+        Alert.alert(
+          'Export Successful',
+          `Database exported securely to:\n${secureFilePath}`,
+          [{ text: 'OK' }]
+        );
+      }
+
+      setProgress(1);
+      setIsExporting(false);
+    } catch (error) {
+      setIsExporting(false);
+      Alert.alert('Export Failed', error.message);
+    }
   };
 
   const handleImport = async () => {
-    setProgress(0.1);
-    const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
-    if (result.type === 'success') {
-      setProgress(0.5);
-      const decryptedData = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
-      setProgress(0.8);
-      await importDatabase(decryptedData);
+    try {
+      setIsImporting(true);
+      setProgress(0.1);
+      
+      const result = await DocumentPicker.getDocumentAsync();
+      
+      if (result.canceled) {
+        setIsImporting(false);
+        return;
+      }
+      
+      const fileUri = result.assets[0].uri;
+      const fileName = result.assets[0].name;
+      
+      if (!fileName.endsWith('.lcrypt')) {
+        setIsImporting(false);
+        Alert.alert('Invalid File', 'Please select a valid LAKSHCRYPT backup file (.lcrypt)');
+        return;
+      }
+      
+      setProgress(0.3);
+      await importDatabase(fileUri);
       setProgress(1);
-      alert('Database imported successfully!');
+      setIsImporting(false);
+      
+      Alert.alert(
+        'Import Successful',
+        'Database imported successfully. The app will now reload.',
+        [{ 
+          text: 'OK',
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Dashboard' }],
+            });
+          }
+        }]
+      );
+    } catch (error) {
+      setIsImporting(false);
+      Alert.alert('Import Failed', error.message);
     }
   };
-  return (
-    <>
-      <View >
-        <Card style={styles.actionCard}>
-          <Text style={styles.sectionTitle}>Data Transfer</Text>
-          <View style={styles.buttonContainer}>
-            <Button mode="contained" onPress={handleExport} style={styles.button}>Export</Button>
-            <Button mode="contained" onPress={handleImport} style={styles.button}>Import</Button>
-          </View>
-          {/* {progress !== 0 && progress < 100 && (
-  <ProgressBar progress={progress} style={styles.progressBar} />
-)} */}
-        </Card>
-      </View>
-    <View style={styles.container}>
-           <View style={styles.innerContainer}>
-      <FlatList
-        data={configs}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <Card style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <IconButton icon="cog" size={24} onPress={() => handleEdit(item)} />
-            </View>
-          </Card>
-        )}
-      />
-      </View>
 
-      {/* Settings Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <Card style={styles.modalContent}>
-            <Card.Title title={`${selectedConfig?.title} Settings`} />
-            <Card.Content>
-              <View style={styles.checkboxRow}>
-                <Checkbox
-                  status={selectedConfig?.isShare ? "checked" : "unchecked"}
-                  onPress={() => handleToggle("isShare")}
-                />
-                <Text>Share</Text>
-              </View>
-              <View style={styles.checkboxRow}>
-                <Checkbox
-                  status={selectedConfig?.isVisible ? "checked" : "unchecked"}
-                  onPress={() => handleToggle("isVisible")}
-                />
-                <Text>Visible</Text>
-              </View>
+  const handleSubmitContactForm = async () => {
+    const { name, email, phone, type, subject, message } = formData;
+  
+    if (!name || !email || !message) {
+      alert('Please fill in required fields.');
+      return;
+    }
+    
+    const telegramMessage = {
+      name,
+      email,
+      phone,
+      type,
+      subject,
+      message
+    };
+  
+    try {
+      await apiErrorLogsSendTelegram(telegramMessage);
+      alert('Message sent successfully!');
+      setFormData({ name: '', email: '', phone: '', type: '', subject: '', message: '' });
+    } catch (error) {
+      alert('Failed to send message.');
+      console.error(error);
+    }
+  };
 
-              <Divider style={styles.divider} />
+async function apiErrorLogsSendTelegram( data ) {
+  const statusEmoji = data.type === 'Error' ? '🔴' : '🟢';
 
-              <Text>Main Header:</Text>
-              <Picker
-                selectedValue={selectedConfig?.mainHeader[0]?.headerKey}
-                onValueChange={(value) => handleHeaderChange(value)}
-              >
-                {selectedConfig?.showDataHeader.map((header, index) => (
-                  <Picker.Item key={index} label={header.headerValue} value={header.headerKey} />
-                ))}
-              </Picker>
+  const messageStyle = `
+*${statusEmoji} ------ ${ data.type } ------ ${statusEmoji}*
+*Report UID:* ${data.type}
+*Name:* ${data.name || ''}
+*Email:* ${data.email || ''}
+*Phone:* ${data.phone || ''}
+*Subject:* ${data.subject || ''}
+*Message:* ${data.message || ''}
+  `;
+console.log('Message being sent to Telegram:', messageStyle);
+  try {
+    await axios.post(`https://api.telegram.org/bot7670966901:AAHLBCcLuTgL1b0gyZ2oG3-4B_1Dz9MwWo4/sendMessage`, {
+      chat_id:'-1002313547539',
+      text: messageStyle,
+      parse_mode: 'Markdown',
+    });
+  } catch (error) {
+    console.error('Failed to send message to Telegram:', error.message);
+  }
+}
 
-              <Divider style={styles.divider} />
-
-              <Text style={styles.subTitle}>Show Data Headers</Text>
-              <FlatList
-                data={selectedConfig?.showDataHeader}
-                keyExtractor={(item) => item.headerKey}
-                renderItem={({ item }) => (
-                  <View style={styles.checkboxRow}>
-                    <Text>{item.headerValue}</Text>
-                    <Checkbox
-                      status={item.isVisible ? "checked" : "unchecked"}
-                      onPress={() => {
-                        setSelectedConfig((prevConfig) => ({
-                          ...prevConfig,
-                          showDataHeader: prevConfig.showDataHeader.map((h) =>
-                            h.headerKey === item.headerKey
-                              ? { ...h, isVisible: h.isVisible ? 0 : 1 }
-                              : h
-                          ),
-                        }));
-                      }}
+  const renderSection = ({ item }) => {
+    switch (item.type) {
+      case 'profile':
+        return (
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#4285F4', '#6366F1']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerGradient}
+            >
+              <View style={styles.profileCard}>
+                <View style={styles.profileHeader}>
+                  <View style={styles.avatarContainer}>
+                    <Avatar.Text
+                      size={80}
+                      label={item.data.name.substring(1, 3).toUpperCase()}
+                      backgroundColor="rgba(255, 255, 255, 0.2)"
+                      color="#fff"
+                      labelStyle={styles.avatarLabel}
                     />
                   </View>
-                )}
-              />
-            </Card.Content>
+                  <View style={styles.profileInfo}>
+                    <Text style={styles.profileName}>{item.data.name}</Text>
+                    <Text style={styles.profileRole}>{item.data.email}</Text>
+                    <Text style={styles.profileRole}>{item.data.phone}</Text>
+                  </View>
+                </View>
 
-            <Card.Actions>
-              <Button onPress={() => setModalVisible(false)}>Cancel</Button>
-              <Button mode="contained" onPress={handleUpdate}>
-                Update
-              </Button>
-            </Card.Actions>
-          </Card>
-        </View>
+                <View style={styles.actionButtonsRow}>
+                  <TouchableOpacity 
+                    style={styles.messageButton} 
+                    onPress={handleImport} 
+                    disabled={isImporting}
+                  >
+                    <Text style={styles.messageButtonText}>
+                      {isImporting ? 'Importing...' : 'Import Data'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.followButton} 
+                    onPress={handleExport} 
+                    disabled={isExporting}
+                  >
+                    <MaterialIcons name="file-download" size={18} color="white" style={styles.followIcon} />
+                    <Text style={styles.followButtonText}>
+                      {isExporting ? 'Exporting...' : 'Export Data'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+        );
+
+      case 'actions':
+        return (
+          <View style={styles.statusCard}>
+            <View style={styles.statusHeader}>
+              <MaterialIcons name="settings" size={24} color="#4285F4" />
+              <Text style={styles.statusTitle}>APP CONFIGURATIONS</Text>
+            </View>
+            <Text style={styles.statusText}>
+              Manage your app settings and configurations. You have {configs.length} configurations available.
+            </Text>
+          </View>
+        );
+
+      case 'progress':
+        return (
+          <View style={styles.progressContainer}>
+            <ProgressBar progress={item.data.progress} color="#4A67F0" style={styles.progressBar} />
+            <Text style={styles.progressText}>
+              {item.data.isExporting ? 'Exporting database...' : 'Importing database...'}
+              {Math.round(item.data.progress * 100)}%
+            </Text>
+          </View>
+        );
+
+      case 'configs':
+        return (
+          <View style={styles.configsContainer}>
+            {item.data.length > 0 ? (
+              item.data.map((config) => (
+                <TouchableOpacity
+                  key={config.uid}
+                  style={styles.configCard}
+                  onPress={() => handleEdit(config)}
+                >
+                  <View style={styles.configHeader}>
+                    <View style={styles.configIconContainer}>
+                      <MaterialIcons name="settings" size={24} color="#4285F4" />
+                    </View>
+                    <View style={styles.configInfo}>
+                      <Text style={styles.configTitle}>{config.title}</Text>
+                      <Text style={styles.configSubtitle}>
+                        {config.isVisible ? 'Visible' : 'Hidden'} • {config.isShare ? 'Shareable' : 'Private'}
+                      </Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color="#4285F4" />
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <MaterialIcons name="info" size={24} color="#999" />
+                <Text style={styles.emptyStateText}>No configurations found</Text>
+              </View>
+            )}
+          </View>
+        );
+
+      case 'contact':
+        return (
+          <View style={styles.formContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Name"
+              value={formData.name}
+              onChangeText={(text) => setFormData({ ...formData, name: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={formData.email}
+              keyboardType="email-address"
+              onChangeText={(text) => setFormData({ ...formData, email: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Phone"
+              value={formData.phone}
+              keyboardType="phone-pad"
+              onChangeText={(text) => setFormData({ ...formData, phone: text })}
+            />
+             {/* Picker for type */}
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.type}
+                onValueChange={(itemValue) => setFormData({ ...formData, type: itemValue })}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select Type" value="" />
+                <Picker.Item label="Error" value="Error" />
+                <Picker.Item label="Suggestion" value="Suggestion" />
+              </Picker>
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Subject"
+              value={formData.subject}
+              onChangeText={(text) => setFormData({ ...formData, subject: text })}
+            />
+            <TextInput
+              style={[styles.input, { height: 100 }]}
+              placeholder="Message"
+              value={formData.message}
+              multiline
+              onChangeText={(text) => setFormData({ ...formData, message: text })}
+            />
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmitContactForm}
+            >
+              <Text style={styles.submitText}>SEND MESSAGE</Text>
+              <MaterialIcons name="arrow-forward" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const sections = [
+    { type: 'profile', data: userData },
+    { type: 'actions', data: null },
+    ...(isExporting || isImporting ? [{ type: 'progress', data: { progress, isExporting, isImporting } }] : []),
+    { type: 'configs', data: configs },
+    { type: 'contact', data: formData }
+  ];
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ProgressBar indeterminate color="#4285F4" />
+        <Text style={styles.loadingText}>Loading settings...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={sections}
+        keyExtractor={(item, index) => `${item.type}-${index}`}
+        renderItem={renderSection}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4285F4']}
+            tintColor="#4285F4"
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <MaterialIcons name="info" size={24} color="#999" />
+            <Text style={styles.emptyStateText}>No data available</Text>
+          </View>
+        }
+      />
+
+      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {selectedConfig?.title} Settings
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <MaterialIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.scrollContainer}>
+              <ScrollView
+                style={styles.formContainer}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+              >
+                <View style={styles.formSection}>
+                  <Text style={styles.sectionTitle}>Configuration Settings</Text>
+
+                  <View style={styles.settingsGroup}>
+                    <Text style={styles.groupTitle}>Basic Settings</Text>
+
+                    <View style={styles.formRow}>
+                      <Text style={styles.formLabel}>Configuration Title</Text>
+                      <View style={styles.formInputContainer}>
+                        <Text style={styles.formValue}>{selectedConfig?.title || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.formRow}>
+                      <Text style={styles.formLabel}>Table Key</Text>
+                      <View style={styles.formInputContainer}>
+                        <Text style={styles.formValue}>{selectedConfig?.table_key || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.formRow}>
+                      <Text style={styles.formLabel}>Created Date</Text>
+                      <View style={styles.formInputContainer}>
+                        <Text style={styles.formValue}>
+                          {selectedConfig?.created_at ? new Date(selectedConfig.created_at).toLocaleDateString() : 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.settingsGroup}>
+                    <Text style={styles.groupTitle}>Visibility Settings</Text>
+
+                    <View style={styles.toggleRow}>
+                      <View style={styles.toggleInfo}>
+                        <Text style={styles.toggleLabel}>Share Configuration</Text>
+                        <Text style={styles.toggleDescription}>Allow this configuration to be shared with others</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.toggleSwitch, selectedConfig?.isShare && styles.toggleSwitchActive]}
+                        onPress={() => handleToggle("isShare")}
+                      >
+                        <View style={[styles.toggleThumb, selectedConfig?.isShare && styles.toggleThumbActive]} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleRow}>
+                      <View style={styles.toggleInfo}>
+                        <Text style={styles.toggleLabel}>Visible Configuration</Text>
+                        <Text style={styles.toggleDescription}>Show this configuration in the main list</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.toggleSwitch, selectedConfig?.isVisible && styles.toggleSwitchActive]}
+                        onPress={() => handleToggle("isVisible")}
+                      >
+                        <View style={[styles.toggleThumb, selectedConfig?.isVisible && styles.toggleThumbActive]} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.settingsGroup}>
+                    <Text style={styles.groupTitle}>Main Headers ({selectedConfig?.mainHeader?.length || 0})</Text>
+                    {selectedConfig?.mainHeader?.length > 0 ? (
+                      selectedConfig.mainHeader.map((header, index) => (
+                        <View key={index} style={styles.headerCard}>
+                          <View style={styles.headerCardIcon}>
+                            <MaterialIcons name="label" size={20} color="#4285F4" />
+                          </View>
+                          <View style={styles.headerCardContent}>
+                            <Text style={styles.headerCardTitle}>{header.headerKey}</Text>
+                            <Text style={styles.headerCardSubtitle}>Value: {header.headerValue}</Text>
+                          </View>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={styles.emptyState}>
+                        <MaterialIcons name="info" size={24} color="#999" />
+                        <Text style={styles.emptyStateText}>No main headers configured</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.settingsGroup}>
+                    <Text style={styles.groupTitle}>Data Headers ({selectedConfig?.showDataHeader?.length || 0})</Text>
+                    {selectedConfig?.showDataHeader?.length > 0 ? (
+                      selectedConfig.showDataHeader.map((header, index) => (
+                        <View key={header.headerKey || index} style={styles.dataHeaderCard}>
+                          <View style={styles.dataHeaderInfo}>
+                            <View style={styles.dataHeaderIcon}>
+                              <MaterialIcons name="view-column" size={18} color="#4285F4" />
+                            </View>
+                            <View style={styles.dataHeaderContent}>
+                              <Text style={styles.dataHeaderTitle}>{header.headerValue}</Text>
+                              <Text style={styles.dataHeaderKey}>Key: {header.headerKey}</Text>
+                              <Text style={styles.dataHeaderPosition}>Position: {header.position}</Text>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.dataHeaderToggle, convertDbBoolean(header.isVisible) && styles.dataHeaderToggleActive]}
+                            onPress={() => handleDataHeaderToggle(header.headerKey)}
+                          >
+                            {convertDbBoolean(header.isVisible) ? (
+                              <MaterialIcons name="visibility" size={20} color="white" />
+                            ) : (
+                              <MaterialIcons name="visibility-off" size={20} color="#999" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={styles.emptyState}>
+                        <MaterialIcons name="info" size={24} color="#999" />
+                        <Text style={styles.emptyStateText}>No data headers configured</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <MaterialIcons name="close" size={18} color="#666" style={styles.buttonIcon} />
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.updateButton}
+                onPress={handleUpdate}
+              >
+                <MaterialIcons name="save" size={18} color="white" style={styles.buttonIcon} />
+                <Text style={styles.updateButtonText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
-    </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 15, backgroundColor: "#f8f9fa" },
-  innerContainer: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F5F5"
+  },
+  flatListContent: {
+    paddingBottom: 20,
+  },
+  headerContainer: {
+    marginBottom: 0,
+  },
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+  profileCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  avatarContainer: {
+    marginRight: 16,
+  },
+  avatarLabel: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  profileRole: {
+    fontSize: 14,
+    color: '#4285F4',
+    fontWeight: '500',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  messageButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4285F4',
+    alignItems: 'center',
+  },
+  messageButtonText: {
+    color: '#4285F4',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  followButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: '#4285F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followIcon: {
+    marginRight: 8,
+  },
+  followButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  statusCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
     padding: 20,
-    elevation: 5,
+    marginHorizontal: 20,
+    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  card: { backgroundColor: "#fff", padding: 15, marginVertical: 5, borderRadius: 10},
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardTitle: { fontSize: 18, fontWeight: "bold" },
-  modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalContent: { width: "90%", padding: 20, backgroundColor: "#fff", borderRadius: 10 },
-  checkboxRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 10 },
-  divider: { marginVertical: 10 },
-  subTitle: { fontSize: 16, fontWeight: "600", marginTop: 10 },
-  appBar: {
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 4,
-    shadowColor: '#000',
   },
-  actionCard: { padding: 20, margin: 10, backgroundColor: "#fff", borderRadius: 10 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  buttonContainer: { flexDirection: "row", justifyContent: "space-around", marginTop: 1 },
-  button: { width: "40%" },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statusTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+    marginLeft: 8,
+    letterSpacing: 1,
+  },
+  statusText: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
+  },
+  progressContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  configsContainer: {
+    marginHorizontal: 20,
+    marginTop: 20,
+  },
+  configCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  configHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  configIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0F4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  configInfo: {
+    flex: 1,
+    
+  },
+  configTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  configSubtitle: {
+    fontSize: 12,
+    color: '#999',
+  },
+  projectCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  projectText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+    letterSpacing: 1,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    borderRadius: 20,
+    maxHeight: "80%",
+  },
+  scrollContainer: {
+    flex: 1,
+    height: "100%",
+  },
+  formContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  formSection: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  settingsGroup: {
+    marginBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    paddingBottom: 20,
+    height: '200',
+  },
+  groupTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4285F4',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  formRow: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formInputContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  formValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  toggleDescription: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E9ECEF',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#4285F4',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  headerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F4FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E3EBFF',
+  },
+  headerCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#4285F4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerCardContent: {
+    flex: 1,
+  },
+  headerCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  headerCardSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  dataHeaderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  dataHeaderInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dataHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0F4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  dataHeaderContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  dataHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  dataHeaderKey: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  dataHeaderPosition: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: '500',
+  },
+  dataHeaderToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  dataHeaderToggleActive: {
+    backgroundColor: '#4285F4',
+    borderColor: '#4285F4',
+  },
+  emptyState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    marginHorizontal: 20,
+    marginTop: 20,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#999',
+    marginLeft: 8,
+    fontStyle: 'italic',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: "space-between",
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  updateButton: {
+    flex: 1,
+    backgroundColor: "#4285F4",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  updateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonIcon: {
+    marginRight: 8,
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+  },
+  formContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    margin: 10,
+    elevation: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  submitButton: {
+    backgroundColor: '#4285F4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 8,
+  },
+  submitText: {
+    color: '#fff',
+    fontSize: 16,
+    marginRight: 10,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+  },
 });
 
 export default SettingsScreen;

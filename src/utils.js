@@ -17,7 +17,7 @@ export const decrypt = async (cipher) => {
     try {
         const decoded = atob(cipher);
         const [originalText, originalHmac] = decoded.split(':');
-
+         // console.log(`---------------------- ?? ${originalText, originalHmac}`)
         const currentHmac = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             SECURE_FILE_EXT + originalText
@@ -29,7 +29,7 @@ export const decrypt = async (cipher) => {
             throw new Error('Invalid or tampered data');
         }
     } catch (error) {
-        console.error('❌ Decryption failed:', error);
+         // console.error('❌ Decryption failed:', error);
         return null;
     }
 };

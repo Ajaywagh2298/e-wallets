@@ -5,7 +5,7 @@ import { selectQuery } from '../src/controller';
 import { decrypt } from '../src/utils';
 
 const FinanceListScreen = ({ titleKey, tableKey }) => {
-    console.log('FinanceListScreen:', tableKey, titleKey);
+     // console.log('FinanceListScreen:', tableKey, titleKey);
     const [selectedCategory, setSelectedCategory] = useState(tableKey);
     const [title, setTitle] = useState(titleKey);
     const [dataList, setDataList] = useState([]);
@@ -38,7 +38,6 @@ const FinanceListScreen = ({ titleKey, tableKey }) => {
                         upiId: item.upiId ? await decrypt(item.upiId) : '',
                         notes: item.notes ? await decrypt(item.notes) : '',
                     })));
-                    console.log('Bank Account:', data);
                     break;
                 case 'Credit_Card_Details':
                 case 'Debit_Card_Details':
@@ -74,7 +73,7 @@ const FinanceListScreen = ({ titleKey, tableKey }) => {
 
             setDataList(data || []);
         } catch (error) {
-            console.error(`Failed to load ${category} data:`, error);
+             // console.error(`Failed to load ${category} data:`, error);
         }
     };
 

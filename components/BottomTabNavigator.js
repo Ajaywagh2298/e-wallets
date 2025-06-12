@@ -5,6 +5,7 @@ import MIcon from 'react-native-vector-icons/MaterialIcons';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 
+
 const BottomTabNavigator = ({menu}) => {
   const [activeTab, setActiveTab] = useState(menu);
   const navigation = useNavigation();
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: '3%',
-    marginBottom : '5%'
+    marginBottom: '3%'
   },
   tabBackground: {
     flexDirection: 'row',
@@ -88,6 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    paddingVertical: 12,
   },
   activeIndicator: {
     position: 'absolute',
