@@ -22,7 +22,7 @@ import * as Sharing from 'expo-sharing';
 import * as Crypto from 'expo-crypto';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import { Picker } from '@react-native-picker/picker'; 
+import { Picker } from '@react-native-picker/picker';
 
 const SettingsScreen = ({ navigation }) => {
   const [configs, setConfigs] = useState([]);
@@ -37,7 +37,7 @@ const SettingsScreen = ({ navigation }) => {
     name: '',
     email: '',
     phone: '',
-     type: '',
+    type: '',
     subject: '',
     message: '',
   });
@@ -67,13 +67,13 @@ const SettingsScreen = ({ navigation }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch configs
       let configData = await selectQuery('config', {}, '*', { orderBy: 'title' });
       if (configData?.length > 0) {
         configData = configData.map(config => {
-          console.log('Raw config from DB:', config); // Debug log
-          
+          //console.log('Raw config from DB:', config); // Debug log
+
           const processedConfig = {
             ...config,
             // Parse JSON strings safely
@@ -83,15 +83,15 @@ const SettingsScreen = ({ navigation }) => {
             isShare: convertDbBoolean(config.isShare),
             isVisible: convertDbBoolean(config.isVisible)
           };
-          
-          console.log('Processed config:', processedConfig); // Debug log
+
+          //console.log('Processed config:', processedConfig); // Debug log
           return processedConfig;
         });
         setConfigs(configData);
       } else {
         setConfigs([]);
       }
-      
+
       // Fetch user data
       const userData = await selectQuery('user', {}, '*');
       if (userData?.length > 0) {
@@ -121,8 +121,8 @@ const SettingsScreen = ({ navigation }) => {
 
   const handleEdit = (config) => {
     try {
-      console.log('Editing config:', config); // Debug log
-      
+      //console.log('Editing config:', config); // Debug log
+
       const processedConfig = {
         ...config,
         // Ensure arrays are properly handled
@@ -132,8 +132,8 @@ const SettingsScreen = ({ navigation }) => {
         isShare: convertDbBoolean(config.isShare),
         isVisible: convertDbBoolean(config.isVisible)
       };
-      
-      console.log('Setting selected config:', processedConfig); // Debug log
+
+      //console.log('Setting selected config:', processedConfig); // Debug log
       setSelectedConfig(processedConfig);
       setModalVisible(true);
     } catch (error) {
@@ -145,7 +145,7 @@ const SettingsScreen = ({ navigation }) => {
   const handleToggle = (key) => {
     setSelectedConfig((prevConfig) => {
       const newValue = !prevConfig[key];
-      console.log(`Toggling ${key} from ${prevConfig[key]} to ${newValue}`); // Debug log
+      //console.log(`Toggling ${key} from ${prevConfig[key]} to ${newValue}`); // Debug log
       return {
         ...prevConfig,
         [key]: newValue,
@@ -156,8 +156,8 @@ const SettingsScreen = ({ navigation }) => {
   const handleUpdate = async () => {
     if (selectedConfig) {
       try {
-        console.log('Updating config:', selectedConfig); // Debug log
-        
+        //console.log('Updating config:', selectedConfig); // Debug log
+
         const updatedConfig = {
           ...selectedConfig,
           // Convert arrays back to JSON strings for database storage
@@ -167,24 +167,24 @@ const SettingsScreen = ({ navigation }) => {
           isShare: selectedConfig.isShare ? 1 : 0,
           isVisible: selectedConfig.isVisible ? 1 : 0,
         };
-        
-        console.log('Config being sent to database:', updatedConfig); // Debug log
-        
+
+        //console.log('Config being sent to database:', updatedConfig); // Debug log
+
         await updateQuery('config', updatedConfig, { uid: updatedConfig.uid });
-        
+
         // Update local state with the processed version
         const updatedConfigForState = {
           ...selectedConfig,
           isShare: convertDbBoolean(updatedConfig.isShare),
           isVisible: convertDbBoolean(updatedConfig.isVisible)
         };
-        
+
         setConfigs((prevConfigs) =>
           prevConfigs.map((config) =>
             config.uid === updatedConfig.uid ? updatedConfigForState : config
           )
         );
-        
+
         setModalVisible(false);
         Alert.alert('Success', 'Configuration updated successfully!');
       } catch (error) {
@@ -209,78 +209,62 @@ const SettingsScreen = ({ navigation }) => {
   const exportDatabase = async () => {
     try {
       const tablesQuery = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('user', 'migrations', 'sqlite_sequence')";
-      const tables = await executeQuery(tablesQuery);
-      
+      const tables = await executeQuery(tablesQuery); // Check if result.rows needed
+  
       let exportData = {};
-      
+  
       for (const table of tables) {
         const tableName = table.name;
         const tableData = await selectQuery(tableName, {}, '*');
         exportData[tableName] = tableData;
       }
-      
+  
       const jsonData = JSON.stringify(exportData);
-      const encryptedData = await Crypto.digestStringAsync(
+      const checksum = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         jsonData
       );
-      
+  
       const timestamp = new Date().getTime();
       const secureFilePath = `${FileSystem.documentDirectory}lakshcrypt_backup_${timestamp}.lcrypt`;
-      
+  
       const fileHeader = "LAKSHCRYPT_SECURE_BACKUP_V1";
-      const fileContent = fileHeader + "|" + encryptedData + "|" + jsonData;
-      
+      const fileContent = `${fileHeader}|${checksum}|${jsonData}`;
+  
       await FileSystem.writeAsStringAsync(secureFilePath, fileContent);
-      
+  
       return secureFilePath;
     } catch (error) {
       console.error('Export error:', error);
       throw error;
     }
   };
+  
 
-  const importDatabase = async (fileUri) => {
+  const importDatabase = async (jsonData) => {
     try {
-      const fileContent = await FileSystem.readAsStringAsync(fileUri);
-      
-      if (!fileContent.startsWith("LAKSHCRYPT_SECURE_BACKUP_V1|")) {
-        throw new Error("Invalid backup file format");
-      }
-      
-      const parts = fileContent.split("|");
-      if (parts.length !== 3) {
-        throw new Error("Corrupted backup file");
-      }
-      
-      const [, checksum, jsonData] = parts;
-      
-      const calculatedChecksum = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        jsonData
-      );
-      
-      if (checksum !== calculatedChecksum) {
-        throw new Error("Backup file integrity check failed");
-      }
-      
       const importData = JSON.parse(jsonData);
-      
+  
       for (const [tableName, tableData] of Object.entries(importData)) {
-        await executeQuery(`DELETE FROM ${tableName}`);
-        
+        await executeQuery(`DELETE FROM ${tableName}`); // Clear table
+  
         for (const record of tableData) {
-          const { uid, ...recordWithoutUid } = record;
-          await updateQuery(tableName, recordWithoutUid, { uid });
+          const columns = Object.keys(record);
+          const values = columns.map(col => record[col]);
+          const placeholders = columns.map(() => '?').join(', ');
+          const insertQuery = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+          await executeQuery(insertQuery, values);
         }
       }
-      
+  
       return true;
     } catch (error) {
       console.error('Import error:', error);
       throw error;
     }
   };
+  
+  
 
   const handleExport = async () => {
     try {
@@ -318,55 +302,108 @@ const SettingsScreen = ({ navigation }) => {
     try {
       setIsImporting(true);
       setProgress(0.1);
-      
+  
       const result = await DocumentPicker.getDocumentAsync();
-      
+  
       if (result.canceled) {
         setIsImporting(false);
         return;
       }
-      
+  
       const fileUri = result.assets[0].uri;
       const fileName = result.assets[0].name;
-      
+  
       if (!fileName.endsWith('.lcrypt')) {
         setIsImporting(false);
         Alert.alert('Invalid File', 'Please select a valid LAKSHCRYPT backup file (.lcrypt)');
         return;
       }
-      
-      setProgress(0.3);
-      await importDatabase(fileUri);
-      setProgress(1);
-      setIsImporting(false);
-      
+  
+      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+  
+      if (!fileContent.startsWith("LAKSHCRYPT_SECURE_BACKUP_V1|")) {
+        setIsImporting(false);
+        Alert.alert('Invalid Format', 'The selected file is not a valid backup.');
+        return;
+      }
+  
+      const parts = fileContent.split("|");
+      if (parts.length !== 3) {
+        setIsImporting(false);
+        Alert.alert('Corrupted File', 'The selected file is corrupted or incomplete.');
+        return;
+      }
+  
+      const [, checksum, jsonData] = parts;
+      const calculatedChecksum = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        jsonData
+      );
+  
+      if (checksum !== calculatedChecksum) {
+        setIsImporting(false);
+        Alert.alert('Checksum Failed', 'The file integrity check failed. Import aborted.');
+        return;
+      }
+  
+      // Ask for user confirmation BEFORE proceeding
       Alert.alert(
-        'Import Successful',
-        'Database imported successfully. The app will now reload.',
-        [{ 
-          text: 'OK',
-          onPress: () => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Dashboard' }],
-            });
+        'Confirm Import',
+        'Importing this backup will erase your existing data. Do you want to continue?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              setIsImporting(false);
+            }
+          },
+          {
+            text: 'Yes, Import',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setProgress(0.5);
+                await importDatabase(jsonData);
+                setProgress(1);
+                setIsImporting(false);
+  
+                Alert.alert(
+                  'Import Successful',
+                  'Database imported successfully. The app will now reload.',
+                  [{
+                    text: 'OK',
+                    onPress: () => {
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Dashboard' }],
+                      });
+                    }
+                  }]
+                );
+              } catch (error) {
+                setIsImporting(false);
+                Alert.alert('Import Failed', error.message);
+              }
+            }
           }
-        }]
+        ]
       );
     } catch (error) {
       setIsImporting(false);
-      Alert.alert('Import Failed', error.message);
+      Alert.alert('Import Error', error.message);
     }
   };
+  
 
   const handleSubmitContactForm = async () => {
     const { name, email, phone, type, subject, message } = formData;
-  
+
     if (!name || !email || !message) {
       alert('Please fill in required fields.');
       return;
     }
-    
+
     const telegramMessage = {
       name,
       email,
@@ -375,7 +412,7 @@ const SettingsScreen = ({ navigation }) => {
       subject,
       message
     };
-  
+
     try {
       await apiErrorLogsSendTelegram(telegramMessage);
       alert('Message sent successfully!');
@@ -386,11 +423,11 @@ const SettingsScreen = ({ navigation }) => {
     }
   };
 
-async function apiErrorLogsSendTelegram( data ) {
-  const statusEmoji = data.type === 'Error' ? '🔴' : '🟢';
+  async function apiErrorLogsSendTelegram(data) {
+    const statusEmoji = data.type === 'Error' ? '🔴' : '🟢';
 
-  const messageStyle = `
-*${statusEmoji} ------ ${ data.type } ------ ${statusEmoji}*
+    const messageStyle = `
+*${statusEmoji} ------ ${data.type} ------ ${statusEmoji}*
 *Report UID:* ${data.type}
 *Name:* ${data.name || ''}
 *Email:* ${data.email || ''}
@@ -398,17 +435,17 @@ async function apiErrorLogsSendTelegram( data ) {
 *Subject:* ${data.subject || ''}
 *Message:* ${data.message || ''}
   `;
-console.log('Message being sent to Telegram:', messageStyle);
-  try {
-    await axios.post(`https://api.telegram.org/bot7670966901:AAHLBCcLuTgL1b0gyZ2oG3-4B_1Dz9MwWo4/sendMessage`, {
-      chat_id:'-1002313547539',
-      text: messageStyle,
-      parse_mode: 'Markdown',
-    });
-  } catch (error) {
-    console.error('Failed to send message to Telegram:', error.message);
+    //console.log('Message being sent to Telegram:', messageStyle);
+    try {
+      await axios.post(`https://api.telegram.org/bot7670966901:AAHLBCcLuTgL1b0gyZ2oG3-4B_1Dz9MwWo4/sendMessage`, {
+        chat_id: '-1002313547539',
+        text: messageStyle,
+        parse_mode: 'Markdown',
+      });
+    } catch (error) {
+      console.error('Failed to send message to Telegram:', error.message);
+    }
   }
-}
 
   const renderSection = ({ item }) => {
     switch (item.type) {
@@ -440,18 +477,18 @@ console.log('Message being sent to Telegram:', messageStyle);
                 </View>
 
                 <View style={styles.actionButtonsRow}>
-                  <TouchableOpacity 
-                    style={styles.messageButton} 
-                    onPress={handleImport} 
+                  <TouchableOpacity
+                    style={styles.messageButton}
+                    onPress={handleImport}
                     disabled={isImporting}
                   >
                     <Text style={styles.messageButtonText}>
                       {isImporting ? 'Importing...' : 'Import Data'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.followButton} 
-                    onPress={handleExport} 
+                  <TouchableOpacity
+                    style={styles.followButton}
+                    onPress={handleExport}
                     disabled={isExporting}
                   >
                     <MaterialIcons name="file-download" size={18} color="white" style={styles.followIcon} />
@@ -470,27 +507,89 @@ console.log('Message being sent to Telegram:', messageStyle);
           <View style={styles.statusCard}>
             <View style={styles.statusHeader}>
               <MaterialIcons name="settings" size={24} color="#4285F4" />
-              <Text style={styles.statusTitle}>APP CONFIGURATIONS</Text>
+              <Text style={styles.statusTitle}>App Query / Suggestion</Text>
             </View>
-            <Text style={styles.statusText}>
-              Manage your app settings and configurations. You have {configs.length} configurations available.
-            </Text>
+            <View style={styles.formContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Name"
+                value={formData.name}
+                onChangeText={(text) => setFormData({ ...formData, name: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                value={formData.email}
+                keyboardType="email-address"
+                onChangeText={(text) => setFormData({ ...formData, email: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Phone"
+                value={formData.phone}
+                keyboardType="phone-pad"
+                onChangeText={(text) => setFormData({ ...formData, phone: text })}
+              />
+              {/* Picker for type */}
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.type}
+                  onValueChange={(itemValue) => setFormData({ ...formData, type: itemValue })}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select Type" value="" />
+                  <Picker.Item label="Error" value="Error" />
+                  <Picker.Item label="Suggestion" value="Suggestion" />
+                </Picker>
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Subject"
+                value={formData.subject}
+                onChangeText={(text) => setFormData({ ...formData, subject: text })}
+              />
+              <TextInput
+                style={[styles.input, { height: 100 }]}
+                placeholder="Message"
+                value={formData.message}
+                multiline
+                onChangeText={(text) => setFormData({ ...formData, message: text })}
+              />
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleSubmitContactForm}
+              >
+                <Text style={styles.submitText}>SEND MESSAGE</Text>
+                <MaterialIcons name="arrow-forward" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         );
 
       case 'progress':
         return (
-          <View style={styles.progressContainer}>
-            <ProgressBar progress={item.data.progress} color="#4A67F0" style={styles.progressBar} />
+          <LinearGradient
+            colors={['#4285F4', '#6366F1']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.progressContainer}
+          >
+            <Text style={styles.progrssTitle}>Data Inprogress...</Text>
+            <ProgressBar progress={item.data.progress} color="#82e0aa" style={styles.progressBar} />
             <Text style={styles.progressText}>
               {item.data.isExporting ? 'Exporting database...' : 'Importing database...'}
               {Math.round(item.data.progress * 100)}%
             </Text>
-          </View>
+          </LinearGradient>
         );
 
       case 'configs':
         return (
+          <View style={styles.statusCard}>
+            <View style={styles.statusHeader}>
+              <MaterialIcons name="settings" size={24} color="#4285F4" />
+              <Text style={styles.statusTitle}>App Modules Configuration</Text>
+            </View>
           <View style={styles.configsContainer}>
             {item.data.length > 0 ? (
               item.data.map((config) => (
@@ -520,66 +619,8 @@ console.log('Message being sent to Telegram:', messageStyle);
               </View>
             )}
           </View>
-        );
-
-      case 'contact':
-        return (
-          <View style={styles.formContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Name"
-              value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={formData.email}
-              keyboardType="email-address"
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Phone"
-              value={formData.phone}
-              keyboardType="phone-pad"
-              onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            />
-             {/* Picker for type */}
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.type}
-                onValueChange={(itemValue) => setFormData({ ...formData, type: itemValue })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select Type" value="" />
-                <Picker.Item label="Error" value="Error" />
-                <Picker.Item label="Suggestion" value="Suggestion" />
-              </Picker>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Subject"
-              value={formData.subject}
-              onChangeText={(text) => setFormData({ ...formData, subject: text })}
-            />
-            <TextInput
-              style={[styles.input, { height: 100 }]}
-              placeholder="Message"
-              value={formData.message}
-              multiline
-              onChangeText={(text) => setFormData({ ...formData, message: text })}
-            />
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSubmitContactForm}
-            >
-              <Text style={styles.submitText}>SEND MESSAGE</Text>
-              <MaterialIcons name="arrow-forward" size={24} color="#fff" />
-            </TouchableOpacity>
           </View>
         );
-
       default:
         return null;
     }
@@ -587,10 +628,9 @@ console.log('Message being sent to Telegram:', messageStyle);
 
   const sections = [
     { type: 'profile', data: userData },
-    { type: 'actions', data: null },
     ...(isExporting || isImporting ? [{ type: 'progress', data: { progress, isExporting, isImporting } }] : []),
+    { type: 'actions', data: null },
     { type: 'configs', data: configs },
-    { type: 'contact', data: formData }
   ];
 
   if (loading) {
@@ -627,56 +667,33 @@ console.log('Message being sent to Telegram:', messageStyle);
       />
 
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedConfig?.title} Settings
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {selectedConfig?.title || 'Config'} Settings
+                </Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <MaterialIcons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.scrollContainer}>
+              {/* Scrollable Body */}
               <ScrollView
-                style={styles.formContainer}
+                style={styles.scrollContainer}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                
               >
                 <View style={styles.formSection}>
+                  {/* Basic Info */}
                   <Text style={styles.sectionTitle}>Configuration Settings</Text>
-
-                  <View style={styles.settingsGroup}>
-                    <Text style={styles.groupTitle}>Basic Settings</Text>
-
-                    <View style={styles.formRow}>
-                      <Text style={styles.formLabel}>Configuration Title</Text>
-                      <View style={styles.formInputContainer}>
-                        <Text style={styles.formValue}>{selectedConfig?.title || 'N/A'}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.formRow}>
-                      <Text style={styles.formLabel}>Table Key</Text>
-                      <View style={styles.formInputContainer}>
-                        <Text style={styles.formValue}>{selectedConfig?.table_key || 'N/A'}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.formRow}>
-                      <Text style={styles.formLabel}>Created Date</Text>
-                      <View style={styles.formInputContainer}>
-                        <Text style={styles.formValue}>
-                          {selectedConfig?.created_at ? new Date(selectedConfig.created_at).toLocaleDateString() : 'N/A'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
+                  {/* Toggle Options */}
                   <View style={styles.settingsGroup}>
                     <Text style={styles.groupTitle}>Visibility Settings</Text>
 
@@ -707,20 +724,22 @@ console.log('Message being sent to Telegram:', messageStyle);
                     </View>
                   </View>
 
+                  {/* Main Headers */}
                   <View style={styles.settingsGroup}>
                     <Text style={styles.groupTitle}>Main Headers ({selectedConfig?.mainHeader?.length || 0})</Text>
                     {selectedConfig?.mainHeader?.length > 0 ? (
-                      selectedConfig.mainHeader.map((header, index) => (
-                        <View key={index} style={styles.headerCard}>
-                          <View style={styles.headerCardIcon}>
-                            <MaterialIcons name="label" size={20} color="#4285F4" />
+                      selectedConfig.mainHeader.map((header, index) => {
+                        return (
+                          <View key={index} style={styles.headerCard}>
+                            <View style={styles.headerCardIcon}>
+                              <MaterialIcons name="label" size={20} color="#f39c12" />
+                            </View>
+                            <View style={styles.headerCardContent}>
+                              <Text style={styles.headerCardTitle}>{header.headerKey}</Text>
+                            </View>
                           </View>
-                          <View style={styles.headerCardContent}>
-                            <Text style={styles.headerCardTitle}>{header.headerKey}</Text>
-                            <Text style={styles.headerCardSubtitle}>Value: {header.headerValue}</Text>
-                          </View>
-                        </View>
-                      ))
+                        );
+                      })
                     ) : (
                       <View style={styles.emptyState}>
                         <MaterialIcons name="info" size={24} color="#999" />
@@ -729,6 +748,7 @@ console.log('Message being sent to Telegram:', messageStyle);
                     )}
                   </View>
 
+                  {/* Data Headers */}
                   <View style={styles.settingsGroup}>
                     <Text style={styles.groupTitle}>Data Headers ({selectedConfig?.showDataHeader?.length || 0})</Text>
                     {selectedConfig?.showDataHeader?.length > 0 ? (
@@ -736,11 +756,10 @@ console.log('Message being sent to Telegram:', messageStyle);
                         <View key={header.headerKey || index} style={styles.dataHeaderCard}>
                           <View style={styles.dataHeaderInfo}>
                             <View style={styles.dataHeaderIcon}>
-                              <MaterialIcons name="view-column" size={18} color="#4285F4" />
+                              <MaterialIcons name="view-column" size={18} color="#fdfefe" />
                             </View>
                             <View style={styles.dataHeaderContent}>
                               <Text style={styles.dataHeaderTitle}>{header.headerValue}</Text>
-                              <Text style={styles.dataHeaderKey}>Key: {header.headerKey}</Text>
                               <Text style={styles.dataHeaderPosition}>Position: {header.position}</Text>
                             </View>
                           </View>
@@ -751,7 +770,7 @@ console.log('Message being sent to Telegram:', messageStyle);
                             {convertDbBoolean(header.isVisible) ? (
                               <MaterialIcons name="visibility" size={20} color="white" />
                             ) : (
-                              <MaterialIcons name="visibility-off" size={20} color="#999" />
+                              <MaterialIcons name="visibility-off" size={20} color="#ec7063" />
                             )}
                           </TouchableOpacity>
                         </View>
@@ -763,25 +782,25 @@ console.log('Message being sent to Telegram:', messageStyle);
                       </View>
                     )}
                   </View>
+                      {/* Footer Buttons */}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <MaterialIcons name="close" size={18} color="#fdfefe" style={styles.buttonIcon} />
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.updateButton}
+                    onPress={handleUpdate}
+                  >
+                    <MaterialIcons name="save" size={18} color="white" style={styles.buttonIcon} />
+                    <Text style={styles.updateButtonText}>Save Changes</Text>
+                  </TouchableOpacity>
+                </View>
                 </View>
               </ScrollView>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <MaterialIcons name="close" size={18} color="#666" style={styles.buttonIcon} />
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.updateButton}
-                onPress={handleUpdate}
-              >
-                <MaterialIcons name="save" size={18} color="white" style={styles.buttonIcon} />
-                <Text style={styles.updateButtonText}>Save Changes</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -903,6 +922,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     letterSpacing: 1,
   },
+  progrssTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fdfefe',
+    marginLeft: 8,
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
   statusText: {
     fontSize: 16,
     color: '#333',
@@ -922,7 +949,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: '#666',
+    color: '#fdfefe',
     textAlign: 'center',
   },
   configsContainer: {
@@ -932,12 +959,12 @@ const styles = StyleSheet.create({
   configCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 1,
   },
   configHeader: {
     flexDirection: 'row',
@@ -955,7 +982,7 @@ const styles = StyleSheet.create({
   },
   configInfo: {
     flex: 1,
-    
+
   },
   configTitle: {
     fontSize: 16,
@@ -989,7 +1016,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   modalContainer: {
-    flex: 1,
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
@@ -997,15 +1023,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginHorizontal: 20,
     borderRadius: 20,
-    maxHeight: "80%",
+    height: '98%',
   },
   scrollContainer: {
-    flex: 1,
-    height: "100%",
-  },
-  formContainer: {
-    flex: 1,
-    padding: 20,
+    padding: '5%',
+    height: '100%',
   },
   scrollContent: {
     padding: 20,
@@ -1025,7 +1047,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   formSection: {
-    flex: 1,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
@@ -1039,7 +1061,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
     paddingBottom: 20,
-    height: '200',
   },
   groupTitle: {
     fontSize: 16,
@@ -1097,7 +1118,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E9ECEF',
+    backgroundColor: '#ec7063',
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
@@ -1150,6 +1171,9 @@ const styles = StyleSheet.create({
   },
   headerCardContent: {
     flex: 1,
+    justifyContent : 'center',
+    fontWeight : 'bold',
+    fontSize : 20
   },
   headerCardTitle: {
     fontSize: 16,
@@ -1185,7 +1209,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F0F4FF',
+    backgroundColor: '#27ae60',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1245,9 +1269,7 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: "space-between",
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    padding: 15,
   },
   cancelButton: {
     flex: 1,
@@ -1257,9 +1279,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E9ECEF',
     alignItems: 'center',
+    marginRight: 8,
+    backgroundColor: '#ec7063',
   },
   cancelButtonText: {
-    color: '#666',
+    color: '#fdfefe',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1295,8 +1319,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
     borderRadius: 10,
-    margin: 10,
-    elevation: 4,
+    margin: 5,
   },
   input: {
     borderWidth: 1,
@@ -1312,6 +1335,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 14,
     borderRadius: 8,
+    width: '50%',
+    margin: 10,
+    display: 'flex',
+    alignSelf: 'center',
   },
   submitText: {
     color: '#fff',
