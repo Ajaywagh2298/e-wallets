@@ -83,14 +83,26 @@ export const scheduleRemindersWithTime = async () => {
         default:
           shouldSchedule = false;
       }
-
+      const formatNotificationContent = (task) => {
+        return {
+          title: `🔔 ${task.reminderCategory || 'Reminder'}: ${task.title}`,
+          body: `📝 ${task.description || 'No description'}\n🎯 Priority: ${task.priority || 'Normal'}`,
+          data: {
+            category: task.reminderCategory,
+            priority: task.priority
+          }
+        };
+      };
+      
+      // Usage
+      await Notifications.scheduleNotificationAsync({
+        content: formatNotificationContent(task),
+        trigger: triggerDate
+      });
+      
       if (shouldSchedule) {
         await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `Reminder: ${task.title}`,
-            body: task.description || 'You have a task to complete.',
-            data: { taskId: task.uid }
-          },
+          content: formatNotificationContent(task),
           trigger: triggerDate
         });
       }
