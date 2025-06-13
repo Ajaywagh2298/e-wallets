@@ -11,6 +11,16 @@ const migrations = [
       return result.length === 0;
     },
     query: `ALTER TABLE task ADD COLUMN reminderTime DATE;`,
+  },
+  {
+    version: 2,
+    check: async () => {
+      const result = await database.getAllAsync(
+        `SELECT name FROM pragma_table_info('task') WHERE name = 'reminderTime';`
+      );
+      return result.length === 0;
+    },
+    query: `ALTER TABLE task ADD COLUMN reminderTime DATE;`,
   }
 ];
 
