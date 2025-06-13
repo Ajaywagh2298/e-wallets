@@ -3,7 +3,9 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'rea
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { registerReminderTask } from './src/ReminderNotificationService';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 import SignUpScreen from './screens/SignUpScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -48,6 +50,12 @@ export default function App() {
     const timer = setTimeout(() => {
       setShowGetStarted(true);
     }, 1000); 
+    
+    // Only request notification permissions if not using Expo Go
+    if (!Constants.appOwnership || Constants.appOwnership !== 'expo') {
+      Notifications.requestPermissionsAsync();
+      registerReminderTask();
+    }
 
     return () => clearTimeout(timer);
   }, []);

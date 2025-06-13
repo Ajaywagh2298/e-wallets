@@ -14,7 +14,7 @@ export const saveLogs = async (message) => {
       `INSERT INTO error_log (log_message) VALUES (?);`,
       [errorMessage]
     );
-     // console.log('✅ Error log saved');
+ //  console.log('✅ Error log saved');
   } catch (error) {
      // console.error('❌ Error saving logs:', error);
   }

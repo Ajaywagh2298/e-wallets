@@ -25,8 +25,13 @@ const NoteScreen = ({ navigation }) => {
   const [reminderType, setReminderType] = useState('');
   const [reminderValue, setReminderValue] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [reminderTime, setReminderTime] = useState({});
+  const [hourStr, setHourStr] = useState('00');
+  const [minStr, setMinStr] = useState('00');
 
   const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const hourOptions = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'];
+  const minuteOptions = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59'];
 
   const handleSave = async () => {
     if (!taskName || !description) {
@@ -44,6 +49,7 @@ const NoteScreen = ({ navigation }) => {
       reminder : reminder ? 1 : 0,
       reminderType : reminderType || '',
       reminderValue : reminderValue || '',
+      reminderTime : reminder ? { hourStr, minStr } : null,
     }
 
     try {
@@ -73,6 +79,27 @@ const NoteScreen = ({ navigation }) => {
             <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.input}>
               <Text>{reminderValue ? reminderValue : 'Select Reminder Date'}</Text>
             </TouchableOpacity>
+            <View style={styles.timeRow}>
+              <Picker
+                selectedValue={hourStr}
+                onValueChange={(value) => setHourStr(value)}
+                style={styles.timePicker}
+              >
+                {hourOptions.map((hr) => (
+                  <Picker.Item key={hr} label={hr} value={hr} />
+                ))}
+              </Picker>
+              <Text style={styles.colon}>:</Text>
+              <Picker
+                selectedValue={minStr}
+                onValueChange={(value) => setMinStr(value)}
+                style={styles.timePicker}
+              >
+                {minuteOptions.map((min) => (
+                  <Picker.Item key={min} label={min} value={min} />
+                ))}
+              </Picker>
+            </View>
             {showDatePicker && (
               <DateTimePicker
                 value={new Date()}
@@ -92,28 +119,74 @@ const NoteScreen = ({ navigation }) => {
       case 'day':
       case 'week':
         return (
-          <View style={styles.input}>
-            <Picker
-              selectedValue={reminderValue}
-              onValueChange={(value) => setReminderValue(value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select a day" value="" />
-              {dayOptions.map((day) => (
-                <Picker.Item key={day} label={day} value={day} />
-              ))}
-            </Picker>
-          </View>
+          <>
+            <View style={styles.input}>
+              <Picker
+                selectedValue={reminderValue}
+                onValueChange={(value) => setReminderValue(value)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select a day" value="" />
+                {dayOptions.map((day) => (
+                  <Picker.Item key={day} label={day} value={day} />
+                ))}
+              </Picker>
+            </View>
+            <View style={styles.timeRow}>
+              <Picker
+                selectedValue={hourStr}
+                onValueChange={(value) => setHourStr(value)}
+                style={styles.timePicker}
+              >
+                {hourOptions.map((hr) => (
+                  <Picker.Item key={hr} label={hr} value={hr} />
+                ))}
+              </Picker>
+              <Text style={styles.colon}>:</Text>
+              <Picker
+                selectedValue={minStr}
+                onValueChange={(value) => setMinStr(value)}
+                style={styles.timePicker}
+              >
+                {minuteOptions.map((min) => (
+                  <Picker.Item key={min} label={min} value={min} />
+                ))}
+              </Picker>
+            </View>
+          </>
         );
       case 'daily':
       case 'monthly':
         return (
-          <TextInput
-            style={styles.input}
-            placeholder="Enter reminder details"
-            value={reminderValue}
-            onChangeText={setReminderValue}
-          />
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter reminder details"
+              value={reminderValue}
+              onChangeText={setReminderValue}
+            />
+            <View style={styles.timeRow}>
+              <Picker
+                selectedValue={hourStr}
+                onValueChange={(value) => setHourStr(value)}
+                style={styles.timePicker}
+              >
+                {hourOptions.map((hr) => (
+                  <Picker.Item key={hr} label={hr} value={hr} />
+                ))}
+              </Picker>
+              <Text style={styles.colon}>:</Text>
+              <Picker
+                selectedValue={minStr}
+                onValueChange={(value) => setMinStr(value)}
+                style={styles.timePicker}
+              >
+                {minuteOptions.map((min) => (
+                  <Picker.Item key={min} label={min} value={min} />
+                ))}
+              </Picker>
+            </View>
+          </>
         );
       default:
         return null;
@@ -272,6 +345,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timePicker: {
+    flex: 1,
+    height: 50,
+  },
+  colon: {
+    fontSize: 20,
+    paddingHorizontal: 8,
   },
 });
 

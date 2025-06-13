@@ -2,32 +2,43 @@ import { database }from '../config/config';
 import { saveLogs } from './controller';
 
 const migrations = [
-    {
-        version: 1,
-        query: `
-            SELECT name FROM pragma_table_info('net_banking') WHERE name = 'accountType';
-            ALTER TABLE net_banking ADD COLUMN accountType TEXT DEFAULT 'Bank';
-        `,
-    }
+  {
+    version: 1,
+    check: async () => {
+      const result = await database.getAllAsync(
+        `SELECT name FROM pragma_table_info('task') WHERE name = 'reminderTime';`
+      );
+      return result.length === 0;
+    },
+    query: `ALTER TABLE task ADD COLUMN reminderTime DATE;`,
+  }
 ];
 
 export const runMigrations = async () => {
-    try {
-      const currentVersion = await getCurrentVersion();
-      
-      for (const migration of migrations) {
-        if (migration.version > currentVersion) {
+  try {
+    const currentVersion = await getCurrentVersion();
+
+    for (const migration of migrations) {
+      if (migration.version > currentVersion) {
+        const shouldRun = typeof migration.check === 'function'
+          ? await migration.check()
+          : true;
+
+        if (shouldRun) {
           await runQuery(migration.query);
           await setCurrentVersion(migration.version);
-           // console.log(`✅ Applied migration version ${migration.version}`);
+          console.log(`✅ Applied migration version ${migration.version}`);
+        } else {
+          console.log(`⚠️ Skipped migration version ${migration.version} (already applied)`);
         }
       }
-    } catch (err) {
-      await saveLogs(`Migration Error: ${err.message || err}`);
-       // console.error(`❌ Migration Error:`, err);
     }
-  };
-  
+  } catch (err) {
+    await saveLogs(`Migration Error: ${err.message || err}`);
+    console.error(`❌ Migration Error:`, err);
+  }
+};
+
   const getCurrentVersion = async () => {
     try {
       const rows = await database.getAllAsync(
