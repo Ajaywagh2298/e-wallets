@@ -1,0 +1,30 @@
+name: Expo Android APK Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Expo CLI
+        run: npm install -g expo-cli
+
+      - name: Login to Expo (anonymous)
+        run: expo login --username anonymous --password anonymous || true
+
+      - name: Build APK
+        run: expo build:android --no-wait --type apk
